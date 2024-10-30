@@ -1,0 +1,387 @@
+#!/bin/bash
+
+# Color definitions for better UX
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Helper functions
+log_info() {
+    echo -e "${GREEN}[INFO]${NC} $1"
+}
+
+log_warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Add these at the beginning of the script
+NONINTERACTIVE=${NONINTERACTIVE:-false}
+DEFAULT_APP_NAME=${DEFAULT_APP_NAME:-app}
+AUTO_YES=${AUTO_YES:-false}
+
+# Modify the confirm function to handle non-interactive mode
+confirm() {
+    if [ "$NONINTERACTIVE" = "true" ]; then
+        [ "$AUTO_YES" = "true" ]
+        return
+    fi
+    
+    read -p "$1 (y/n) " -n 1 -r
+    echo
+    [[ $REPLY =~ ^[Yy]$ ]]
+}
+
+backup_file() {
+    local file=$1
+    if [ -f "$file" ]; then
+        cp "$file" "${file}.old"
+        log_info "Backed up existing $file to ${file}.old"
+    fi
+}
+
+# Detect Ruby and Node versions
+detect_versions() {
+    # Try to get Ruby version from .ruby-version, fallback to Gemfile
+    if [ -f ".ruby-version" ]; then
+        RUBY_VERSION=$(cat .ruby-version | tr -d '\n')
+    else
+        RUBY_VERSION=$(grep "ruby '" Gemfile | sed -E "s/.*ruby '([^']+)'.*/\1/")
+    fi
+
+    # Try to get Node version from package.json
+    if [ -f "package.json" ]; then
+        NODE_VERSION=$(grep '"node":' package.json | sed -E 's/.*"node": "([^"]+)".*/\1/')
+    else
+        NODE_VERSION="20.11.0" # Default version
+    fi
+}
+
+# Parse Gemfile for services
+detect_services() {
+    services=()
+    
+    # Define service mappings using parallel arrays
+    service_gems=("pg" "postgres" "sidekiq" "redis" "mysql2" "mongoid" "elasticsearch" "rabbitmq" "memcached")
+    service_names=("postgres" "postgres" "sidekiq" "redis" "mysql" "mongodb" "elasticsearch" "rabbitmq" "memcached")
+    
+    # Check Gemfile for each service
+    for i in "${!service_gems[@]}"; do
+        gem="${service_gems[$i]}"
+        service="${service_names[$i]}"
+        
+        if grep -q "$gem" Gemfile; then
+            if [ "$NONINTERACTIVE" = "true" ]; then
+                if [ "$AUTO_YES" = "true" ]; then
+                    services+=("$service")
+                    # Set default versions in non-interactive mode
+                    case $service in
+                        "postgres")
+                            PG_VERSION="16.4-bullseye"
+                            ;;
+                        "redis")
+                            REDIS_VERSION="7.4.0"
+                            ;;
+                        "mysql")
+                            MYSQL_VERSION="8.0"
+                            ;;
+                        "mongodb")
+                            MONGO_VERSION="6.0"
+                            ;;
+                        "elasticsearch")
+                            ELASTICSEARCH_VERSION="8.11.4"
+                            ;;
+                        "rabbitmq")
+                            RABBITMQ_VERSION="3.12.1"
+                            ;;
+                        "memcached")
+                            MEMCACHED_VERSION="1.6.24"
+                            ;;
+                    esac
+                fi
+            else
+                if confirm "$service detected. Include it?"; then
+                    services+=("$service")
+                    # Interactive version prompts
+                    case $service in
+                        "postgres")
+                            read -p "Enter PostgreSQL version (default: 16.4-bullseye): " PG_VERSION
+                            PG_VERSION=${PG_VERSION:-16.4-bullseye}
+                            ;;
+                        "redis")
+                            read -p "Enter Redis version (default: 7.4.0): " REDIS_VERSION
+                            REDIS_VERSION=${REDIS_VERSION:-7.4.0}
+                            ;;
+                        "mysql")
+                            read -p "Enter MySQL version (default: 8.0): " MYSQL_VERSION
+                            MYSQL_VERSION=${MYSQL_VERSION:-8.0}
+                            ;;
+                        "mongodb")
+                            read -p "Enter MongoDB version (default: 6.0): " MONGO_VERSION
+                            MONGO_VERSION=${MONGO_VERSION:-6.0}
+                            ;;
+                        "elasticsearch")
+                            read -p "Enter Elasticsearch version (default: 8.11.4): " ELASTICSEARCH_VERSION
+                            ELASTICSEARCH_VERSION=${ELASTICSEARCH_VERSION:-8.11.4}
+                            ;;
+                        "rabbitmq")
+                            read -p "Enter RabbitMQ version (default: 3.12.1): " RABBITMQ_VERSION
+                            RABBITMQ_VERSION=${RABBITMQ_VERSION:-3.12.1}
+                            ;;
+                        "memcached")
+                            read -p "Enter Memcached version (default: 1.6.24): " MEMCACHED_VERSION
+                            MEMCACHED_VERSION=${MEMCACHED_VERSION:-1.6.24}
+                            ;;
+                    esac
+                fi
+            fi
+        fi
+    done
+}
+
+# Generate service-specific configurations
+generate_service_config() {
+    local service=$1
+    
+    case $service in
+        "postgres")
+            cat << EOL
+  postgres:
+    image: postgres:${PG_VERSION}
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST: 0.0.0.0
+    volumes:
+      - postgres:/var/lib/postgresql/data:c
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h postgres -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+EOL
+            ;;
+        "redis")
+            cat << EOL
+  redis:
+    image: redis:${REDIS_VERSION}
+    volumes:
+      - redis:/data:delegated
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+    entrypoint: redis-server --appendonly yes
+
+EOL
+            ;;
+        "mysql")
+            cat << EOL
+  mysql:
+    image: mysql:${MYSQL_VERSION}
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: ${APP_NAME}_development
+    volumes:
+      - mysql:/var/lib/mysql:c
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+EOL
+            ;;
+        "mongodb")
+            cat << EOL
+  mongodb:
+    image: mongo:${MONGO_VERSION}
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongodb
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongodb:/data/db:c
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+EOL
+            ;;
+        "elasticsearch")
+            cat << EOL
+  elasticsearch:
+    image: elasticsearch:${ELASTICSEARCH_VERSION}
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch:/usr/share/elasticsearch/data:c
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -vq '\"status\":\"red\"'"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+
+EOL
+            ;;
+        "rabbitmq")
+            cat << EOL
+  rabbitmq:
+    image: rabbitmq:${RABBITMQ_VERSION}-management
+    environment:
+      - RABBITMQ_DEFAULT_USER=rabbitmq
+      - RABBITMQ_DEFAULT_PASS=password
+    volumes:
+      - rabbitmq:/var/lib/rabbitmq:c
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+EOL
+            ;;
+        "memcached")
+            cat << EOL
+  memcached:
+    image: memcached:${MEMCACHED_VERSION}
+    command: memcached -m 64
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'stats' | nc localhost 11211 | grep -q 'STAT version'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+EOL
+            ;;
+    esac
+}
+
+# Generate service dependencies string
+generate_dependencies() {
+    local deps=""
+    for service in "${services[@]}"; do
+        deps+="      ${service}:\n        condition: service_healthy\n"
+    done
+    echo -e "$deps"
+}
+
+# Modified generate_compose function (services section)
+generate_services() {
+    # Add selected services
+    for service in "${services[@]}"; do
+        generate_service_config "$service" >> compose.yaml
+    done
+
+    # Generate environment variables based on services
+    local env_vars="x-docker-environment: &docker-environment\n"
+    for service in "${services[@]}"; do
+        case $service in
+            "postgres")
+                env_vars+="  DATABASE_URL: postgres://postgres:postgres@postgres:5432\n"
+                ;;
+            "redis")
+                env_vars+="  REDIS_URL: redis://redis:6379/0\n"
+                ;;
+            "mysql")
+                env_vars+="  DATABASE_URL: mysql2://root:password@mysql:3306\n"
+                ;;
+            "mongodb")
+                env_vars+="  MONGODB_URL: mongodb://mongodb:mongodb@mongodb:27017\n"
+                ;;
+        esac
+    done
+    
+    # Add common environment variables
+    env_vars+="  HISTFILE: /data/.shell_history\n"
+    env_vars+="  RAILS_LOG_TO_STDOUT: true\n"
+    
+    # Insert environment variables at the beginning of the file
+    sed -i "1i\\$env_vars" compose.yaml
+}
+
+# Generate docker-compose.yml based on detected services
+generate_compose() {
+    # Backup existing compose file
+    backup_file "compose.yaml"
+    
+    # Create new compose file from scratch instead of using sed
+    {
+        echo "version: '3.8'"
+        echo ""
+        echo "services:"
+        # ... rest of the compose file generation
+    } > compose.yaml
+
+    # Add services configurations
+    for service in "${services[@]}"; do
+        generate_service_config "$service" >> compose.yaml
+    done
+
+    # Add volumes section
+    {
+        echo ""
+        echo "volumes:"
+        echo "  bundle:"
+        echo "  node_modules:"
+        echo "  data:"
+        echo "  cache:"
+    } >> compose.yaml
+
+    # Add service-specific volumes
+    for service in "${services[@]}"; do
+        case $service in
+            "postgres")
+                echo "  postgres:" >> compose.yaml
+                ;;
+            "redis")
+                echo "  redis:" >> compose.yaml
+                ;;
+            "mysql")
+                echo "  mysql:" >> compose.yaml
+                ;;
+            "mongodb")
+                echo "  mongodb:" >> compose.yaml
+                ;;
+            "elasticsearch")
+                echo "  elasticsearch:" >> compose.yaml
+                ;;
+            "rabbitmq")
+                echo "  rabbitmq:" >> compose.yaml
+                ;;
+        esac
+    done
+    
+    # Add certs volume for reproxy
+    echo "  certs:" >> compose.yaml
+}
+
+# Main execution
+main() {
+    log_info "Starting Chagall Deploy installation..."
+    
+    # Get application name
+    if [ "$NONINTERACTIVE" = "true" ]; then
+        APP_NAME="$DEFAULT_APP_NAME"
+    else
+        read -p "Enter your application name (default: app): " APP_NAME
+        APP_NAME=${APP_NAME:-app}
+    fi
+
+    # Generate compose file
+    generate_compose
+    
+    log_info "Generated compose.yaml successfully!"
+}
+
+# Run the script
+main
