@@ -1,0 +1,3 @@
+[submodule "test/src/rails_postgres_redis_sidekiq"]
+	path = test/src/rails_postgres_redis_sidekiq
+	url = https://github.com/frontandstart/initapp-rails.git
