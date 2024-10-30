@@ -135,24 +135,3 @@ if __FILE__ == $0
 
   Installer.new(options).install
 end 
-# CLI handling
-options = {}
-OptionParser.new do |opts|
-  opts.banner = "Usage: install.rb [options]"
-
-  opts.on("-n", "--non-interactive", "Run in non-interactive mode") do
-    options[:non_interactive] = true
-  end
-
-  opts.on("-y", "--yes", "Auto-yes to all prompts") do
-    options[:auto_yes] = true
-  end
-
-  opts.on("-a", "--app-name NAME", "Set application name") do |name|
-    options[:app_name] = name
-  end
-end.parse!
-
-# Run installer
-Installer.new(options).install 
-Installer.new(options).install 
