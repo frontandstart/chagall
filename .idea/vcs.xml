@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="VcsDirectoryMappings">
+    <mapping directory="" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/test/src/rails_7_default_app" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/test/src/rails_postgres_redis_sidekiq" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/test/src/rails_postgres_redis_sidekiq_nonode" vcs="Git" />
+  </component>
+</project>

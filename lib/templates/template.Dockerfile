@@ -1,20 +1,22 @@
-ARG RUBY_VERSION=3.3.5
-ARG NODE_VERSION=20.11.0
+ARG RUBY_VERSION=<%= @versions['ruby'] %>
+ARG NODE_VERSION=<%= @versions['node'] %>
 
 FROM ruby:${RUBY_VERSION}-slim AS development
+
+LABEL app.name="<%= @app_name %>"
 
 ARG NODE_VERSION
 ENV NODE_VERSION=${NODE_VERSION}
 WORKDIR /app
 
 RUN apt-get update -qq && apt-get install -y \
-      build-essential \
-      libvips \
-      libffi-dev \
-      libssl-dev \
-      gnupg2 \
-      curl \
-      git
+    build-essential \
+    libvips \
+    libffi-dev \
+    libssl-dev \
+    gnupg2 \
+    curl \
+    git
 
 # Node section
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash && \
