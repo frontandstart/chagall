@@ -32,6 +32,12 @@ module Chagall
           type: :string,
         },
         {
+          key: :cache_path,
+          type: :string,
+          required: true,
+          default: File.join(Dir.pwd, 'tmp/docker-build-cache')
+        },
+        {
           key: :tag,
           type: :string,
           required: true,
@@ -146,6 +152,10 @@ module Chagall
             @options[:build_args] = v
           end
 
+          opts.on("-c", "--cache-path PATH", "Cache path") do |v|
+            @options[:cache_path] = v
+          end
+
           opts.on("-f", "--compose-files FILES", "Compose files (comma-separated)") do |v|
             @options[:compose_files] = v.split(',')
           end
@@ -184,9 +194,7 @@ module Chagall
         end
 
         if missing_options.any? || missing_compose_files.any?
-          puts "Error:\n"
-          puts error_message_string
-          exit 1
+          raise Chagall::SettingsError, "Error:\n" + error_message_string
         end
       end
 
