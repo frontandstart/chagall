@@ -1,0 +1,94 @@
+#!/usr/bin/env ruby
+require_relative "../lib/chagall/cli/main"
+Chagall::Cli::Main.start(ARGV)
+
+require "securerandom"
+
+server = ARGV[0]
+
+@project_name = "check"
+
+# Run imitate git commit sha
+def commit_sha
+  @commit_sha ||= SecureRandom.hex(16)
+end
+
+
+def project_folder_path
+  "builds/#{@project_name}"
+end
+
+@platform = "linux/amd64"
+
+def docker_image_tar_path
+  "#{project_folder_path}/#{commit_sha}.tar"
+end
+
+def setup_server(server: "hotel-k")
+  system "ssh #{server} 'mkdir -p #{project_folder_path}'"
+end
+
+def build_image
+  p "========= Deploying image for: \n" \
+    "platform: #{@platform} \n" \
+    "commit_sha: #{commit_sha} \n" \
+    "project_name: #{@project_name}\n========="
+
+  # Build the image as a tar stream (sent to stdout) and pipe it over ssh 
+  # to load the image on the server.
+  build_cmd = "docker buildx build " \
+    "--cache-from=type=local,src=tmp/.buildx-cache " \
+    "--cache-to=type=local,dest=tmp/.buildx-cache-new,mode=max " \
+    "--output=type=tar,dest=- " \
+    "--platform #{@platform} " \
+    "-t #{@project_name}:#{commit_sha} " \
+    "--target production " \
+    "-f Dockerfile ."
+
+  full_cmd = "#{build_cmd} | ssh #{server} 'docker image load'"
+  result = system(full_cmd)
+  unless result
+    raise "Failed to deploy Docker image"
+  end
+
+  # The image is loaded with the tag "#{@project_name}-#{@platform}:#{commit_sha}".
+  # Retag it on the server to the expected "#{@project_name}:#{commit_sha}".
+  retag_cmd = "ssh #{server} 'docker tag #{@project_name}-#{@platform}:#{commit_sha} #{@project_name}:#{commit_sha}'"
+  retag_result = system(retag_cmd)
+  unless retag_result
+    raise "Failed to retag Docker image on server"
+  end
+
+  p "✓ Image deployed and tagged on #{server}"
+end 
+
+
+def copy_file_to_server(server: "hotel-k")
+  system "scp #{docker_image_tar_path} #{server}:#{docker_image_tar_path}"
+end
+
+def load_docker_image(server: "hotel-k")
+  system "ssh #{server} 'ls -la #{docker_image_tar_path}'"
+  system("ssh #{server} 'docker image import #{docker_image_tar_path} #{@project_name}:#{commit_sha}'") or raise "Failed to load Docker image"
+end
+
+def check_docker_image(server: "hotel-k")
+  p "========= Checking Docker image: #{@project_name}:#{commit_sha} ========="
+  
+  # Use --filter and --quiet to just get image ID if exists, format as json for reliable parsing
+  check_cmd = "docker images --filter=reference=#{@project_name}:#{commit_sha} --format '{{.ID}}' | grep ."
+  
+  result = system("ssh #{server} '#{check_cmd}'")
+  
+  unless result
+    raise "Docker image #{@project_name}:#{commit_sha} not found on #{server}"
+  end
+  
+  p "✓ Image verified on #{server}"
+end
+
+setup_server
+build_image
+copy_file_to_server
+load_docker_image
+check_docker_image
