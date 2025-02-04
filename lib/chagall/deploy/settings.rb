@@ -18,7 +18,8 @@ module Chagall
         {
           key: :name,
           type: :string,
-          required: true  
+          required: true,
+          default: -> { Dir.pwd.split('/').last }
         },
         {
           key: :compose_files,
@@ -33,7 +34,8 @@ module Chagall
         {
           key: :tag,
           type: :string,
-          required: true
+          required: true,
+          default: -> { `git rev-parse --short HEAD 2>/dev/null`.strip }
         },
         {
           key: :remote,
@@ -156,30 +158,34 @@ module Chagall
       end
 
       def validate_options
-        @options[:name] ||= Dir.pwd.split('/').last
+        error_message_string = ""
 
-        missing = []
-        missing << "server" unless @options[:server]
-        missing << "name" unless @options[:name]
+        missing_options = []
+        OPTIONS.each do |option|
+          if option[:required] && @options[option[:key]].to_s.empty?
+            missing_options << option
+          end
+        end
 
-        if missing.any?
-          puts "Error: Missing required options: #{missing.join(', ')}"
-          puts "These can be set via:"
-          puts "  - CLI arguments (--server, --name)"
-          puts "  - Environment variables (CHAGALL_SERVER, CHAGALL_NAME)"
-          puts "  - chagall.yml file"
-          exit 1
+        if missing_options.any?
+          error_message_string += "  Missing required options: #{missing_options.map { |o| o[:key] }.join(', ')}\n"
+          error_message_string += "    These can be set via:\n"
+          error_message_string += "      - CLI arguments (#{missing_options.map { |o| "--#{o[:key]}" }.join(', ')})\n"
+          error_message_string += "      - Environment variables (#{missing_options.map { |o| "CHAGALL_#{o[:key].upcase}" }.join(', ')})\n"
+          error_message_string += "      - chagall.yml file\n"
         end
 
         missing_compose_files = []
         @options[:compose_files].each do |file|
           unless File.exist?(file)
             missing_compose_files << file
+            error_message_string += "  Missing compose file: #{file}\n"
           end
         end
 
-        unless missing_compose_files.empty?
-          puts "Error: Missing compose files: #{missing_compose_files.join(', ')}"
+        if missing_options.any? || missing_compose_files.any?
+          puts "Error:\n"
+          puts error_message_string
           exit 1
         end
       end
