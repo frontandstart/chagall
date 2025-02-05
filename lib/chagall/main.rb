@@ -7,7 +7,7 @@ require_relative 'deploy/main'
 
 module Chagall
   class Main
-    AVAILABLE_COMMANDS = %i[deploy].freeze
+    AVAILABLE_COMMANDS = %i[deploy rollback install].freeze
 
     attr_accessor :chagall, :command
 

@@ -1,12 +1,9 @@
-require 'securerandom'
 require_relative 'settings'
 
 module Chagall
   module Deploy
     class Main
       def initialize(argv, dry_run: false)
-        binding.pry
-
         Settings.configure(argv)
 
         run unless dry_run

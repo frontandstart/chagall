@@ -159,24 +159,30 @@ module Chagall
           opts.banner = 'Usage: chagall deploy [options]'
 
           OPTIONS.each do |option|
-            opts.on(option[:flags][0],
-                    option[:flags][1],
-                    option[:key].to_s.upcase,
-                    option[:desc]) do |v|
-              @options[option[:key]] = case option[:type]
-                                       when :boolean
-                                         true?(v)
-                                       when :array
-                                         v.split(',')
-                                       else
-                                         v
-                                       end
+            if option[:type] == :boolean
+              opts.on(option[:flags][0],
+                      "#{option[:flags][1]} [BOOLEAN]",
+                      option[:desc]) do |v|
+                @options[option[:key]] = true?(v || 'true')
+              end
+            else
+              opts.on(option[:flags][0],
+                      "#{option[:flags][1]}", "#{option[:env_name]}",
+                      option[:desc]) do |v|
+                @options[option[:key]] = case option[:type]
+                                         when :array
+                                           v.split(',')
+                                         else
+                                           v
+                                         end
+              end
             end
           end
 
           opts.on('-h', '--help', 'Show this help message') do
             puts opts
-            exit
+
+            exit unless defined?(IRB) && IRB.CurrentContext
           end
         end.parse!(@argv)
       end
