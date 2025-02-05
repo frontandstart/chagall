@@ -7,60 +7,86 @@ module Chagall
     class Settings
       include Singleton
 
-      attr_reader :options
-
       OPTIONS = [
         {
           key: :server,
           type: :string,
-          required: true
+          required: true,
+          flags: ['-s', '--server'],
+          env_name: 'CHAGALL_SERVER',
+          desc: 'Server to deploy to (e.g. someserver, user@someserver, user@someserver:port)'
         },
         {
           key: :name,
           type: :string,
           required: true,
-          default: -> { Dir.pwd.split('/').last }
+          flags: ['-n', '--name'],
+          env_name: 'CHAGALL_NAME',
+          default: Dir.pwd.split('/').last,
+          desc: 'Project name'
         },
         {
           key: :compose_files,
           type: :array,
           required: true,
-          default: ['compose.prod.yaml']
+          default: ['compose.prod.yaml'],
+          flags: ['-f', '--compose-files'],
+          env_name: 'CHAGALL_COMPOSE_FILES',
+          desc: 'Compose files (comma-separated)'
         },
         {
           key: :platform,
           type: :string,
+          flags: ['-p', '--platform'],
+          env_name: 'CHAGALL_PLATFORM',
+          desc: 'Platform (e.g. linux/amd64)'
         },
         {
           key: :cache_path,
           type: :string,
-          required: true,
-          default: File.join(Dir.pwd, 'tmp/docker-build-cache')
+          default: File.join(Dir.pwd, 'tmp/docker-build-cache'),
+          flags: ['-c', '--cache-path'],
+          env_name: 'CHAGALL_CACHE_PATH',
+          desc: 'Cache path'
         },
         {
           key: :tag,
           type: :string,
           required: true,
-          default: -> { `git rev-parse --short HEAD 2>/dev/null`.strip }
+          default: `git rev-parse --short HEAD 2>/dev/null`.strip,
+          flags: ['-t', '--tag'],
+          env_name: 'CHAGALL_TAG',
+          desc: 'Tag (commit SHA)'
         },
         {
           key: :remote,
           type: :boolean,
+          flags: ['-r', '--remote'],
+          env_name: 'CHAGALL_REMOTE',
+          desc: 'Build remotely instead of locally'
         },
         {
           key: :build_args,
           type: :string,
+          flags: ['-b', '--build-args'],
+          env_name: 'CHAGALL_BUILD_ARGS',
+          desc: 'Build arguments'
+        },
+        {
+          key: :dry_run,
+          type: :boolean,
+          default: false,
+          flags: ['-d', '--dry-run'],
+          env_name: 'CHAGALL_DRY_RUN',
+          desc: 'Dry run'
         }
-      ]
+      ].freeze
 
-      def initialize
-        @options = {}
-        load_defaults
-      end
+      attr_accessor :options, :missing_options, :missing_compose_files, :argv
 
       class << self
-        def configure(argv, dry_run: false)
-          instance.configure(argv, dry_run: dry_run)
+        def configure(argv)
+          instance.configure(argv)
         end
 
         def options
@@ -72,19 +98,22 @@ module Chagall
         end
       end
 
-
-      def configure(argv, dry_run: false)
+      def configure(argv)
         @argv = argv
-        parse unless dry_run
+        @options = {}
+        @missing_options = []
+        @missing_compose_files = []
+        @argv = argv
+        setup
         self
       end
 
-      def parse
+      def setup
+        load_defaults
         load_config_file
         load_environment_variables
         load_options
         validate_options
-        @options
       end
 
       private
@@ -102,65 +131,50 @@ module Chagall
         begin
           config = YAML.load_file(config_file)
           @options.merge!(symbolize_keys(config))
-        rescue => e
+        rescue StandardError => e
           puts "Warning: Error loading chagall.yml: #{e.message}"
         end
       end
 
       def load_environment_variables
         OPTIONS.each do |option|
-          env_name = "CHAGALL_#{option[:key].upcase}"
-          next if ENV[env_name].to_s.empty?
+          env_name = option[:env_name]
+          next if env_name.nil? || ENV[env_name].nil?
 
-          value = ENV[env_name]
-          value = case option[:key]
-                  when :compose_files
-                    value.split(',')
+          value = case option[:type]
+                  when :array
+                    ENV[env_name].split(',')
+                  when :boolean
+                    true?(ENV[env_name])
                   else
-                    value
+                    ENV[env_name]
                   end
-          
+
           @options[option[:key]] = value
         end
       end
 
       def load_options
         OptionParser.new do |opts|
-          opts.banner = "Usage: chagall deploy [options]"
+          opts.banner = 'Usage: chagall deploy [options]'
 
-          opts.on("-s", "--server SERVER", "Server to deploy to (e.g. someserver, user@someserver, user@someserver:port)") do |v|
-            @options[:server] = v
+          OPTIONS.each do |option|
+            opts.on(option[:flags][0],
+                    option[:flags][1],
+                    option[:key].to_s.upcase,
+                    option[:desc]) do |v|
+              @options[option[:key]] = case option[:type]
+                                       when :boolean
+                                         true?(v)
+                                       when :array
+                                         v.split(',')
+                                       else
+                                         v
+                                       end
+            end
           end
 
-          opts.on("-n", "--name NAME", "Project name") do |v|
-            @options[:name] = v
-          end
-
-          opts.on("-p", "--platform PLATFORM", "Platform (e.g. linux/amd64)") do |v|
-            @options[:platform] = v
-          end
-
-          opts.on("-t", "--tag TAG", "Tag (commit SHA)") do |v|
-            @options[:tag] = v
-          end
-
-          opts.on("-r", "--remote", "Build remotely instead of locally") do |v|
-            @options[:remote] = true
-          end
-
-          opts.on("-b", "--build-args ARGS", "Build arguments") do |v|
-            @options[:build_args] = v
-          end
-
-          opts.on("-c", "--cache-path PATH", "Cache path") do |v|
-            @options[:cache_path] = v
-          end
-
-          opts.on("-f", "--compose-files FILES", "Compose files (comma-separated)") do |v|
-            @options[:compose_files] = v.split(',')
-          end
-
-          opts.on("-h", "--help", "Show this help message") do
+          opts.on('-h', '--help', 'Show this help message') do
             puts opts
             exit
           end
@@ -168,34 +182,36 @@ module Chagall
       end
 
       def validate_options
-        error_message_string = ""
+        error_message_string = "\n"
 
-        missing_options = []
         OPTIONS.each do |option|
-          if option[:required] && @options[option[:key]].to_s.empty?
-            missing_options << option
-          end
+          @missing_options << option if option[:required] && @options[option[:key]].to_s.empty?
         end
 
-        if missing_options.any?
-          error_message_string += "  Missing required options: #{missing_options.map { |o| o[:key] }.join(', ')}\n"
+        if @missing_options.any?
+          error_message_string += "  Missing required options: #{@missing_options.map { |o| o[:key] }.join(', ')}\n"
           error_message_string += "    These can be set via:\n"
-          error_message_string += "      - CLI arguments (#{missing_options.map { |o| "--#{o[:key]}" }.join(', ')})\n"
-          error_message_string += "      - Environment variables (#{missing_options.map { |o| "CHAGALL_#{o[:key].upcase}" }.join(', ')})\n"
+          error_message_string += "      - CLI arguments (#{@missing_options.map { |o| o[:flags] }.join(', ')})\n"
+          error_message_string += "      - Environment variables (#{@missing_options.map do |o|
+            o[:env_name]
+          end.join(', ')})\n"
           error_message_string += "      - chagall.yml file\n"
         end
 
-        missing_compose_files = []
         @options[:compose_files].each do |file|
           unless File.exist?(file)
-            missing_compose_files << file
+            @missing_compose_files << file
             error_message_string += "  Missing compose file: #{file}\n"
           end
         end
 
-        if missing_options.any? || missing_compose_files.any?
-          raise Chagall::SettingsError, "Error:\n" + error_message_string
-        end
+        return unless @missing_options.any? || @missing_compose_files.any?
+
+        raise Chagall::SettingsError, error_message_string unless @options[:dry_run]
+      end
+
+      def true?(value)
+        %w[true y yes 1 si da sure yup].include?(value.downcase)
       end
 
       def symbolize_keys(hash)
@@ -203,4 +219,4 @@ module Chagall
       end
     end
   end
-end 
+end

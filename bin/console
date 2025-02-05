@@ -1,6 +1,25 @@
 #!/usr/bin/env ruby
-require 'bundler/setup'
-require 'pry'
-require_relative '../lib/install.rb'
 
-Pry.start
+require 'bundler/setup'
+lib_path = File.expand_path('../lib', __dir__)
+$LOAD_PATH.unshift(lib_path) unless $LOAD_PATH.include?(lib_path)
+
+require 'chagall'
+require 'irb'
+
+# Helper method for running commands without exiting
+def run_command(args)
+  Chagall::Main.start(args, exit_on_help: false)
+end
+
+# You can add any setup code here
+puts 'Welcome to Chagall console!'
+puts "Chagall::VERSION: #{Chagall::VERSION}"
+puts 'Available commands:'
+puts '  run_command([\'deploy\', \'--help\'])'
+puts '  run_command([\'setup\', \'--help\'])'
+puts
+puts 'Note: Use run_command instead of Chagall::Main.start to prevent exiting the console'
+puts
+
+IRB.start

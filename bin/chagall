@@ -1,15 +1,15 @@
 #!/usr/bin/env ruby
 
-require "chagall"
+# # Prevent failures from being reported twice.
+# Thread.report_on_exception = false
+
+# require 'chagall'
+require_relative '../lib/chagall'
 
 begin
-  Chagall::Main.start(ARGV)
-  if ARGV.any? { |arg| arg.include?("--debug") }
-    require "debug"
-    debugger
-  end
-rescue => e
+  Chagall::Main.new(ARGV)
+rescue StandardError => e
   puts "  \e[31mERROR (#{e.class}): #{e.message}\e[0m"
-  puts e.backtrace if ENV["VERBOSE"]
+  puts e.backtrace if ENV['VERBOSE']
   exit 1
 end
