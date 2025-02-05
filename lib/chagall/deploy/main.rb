@@ -11,80 +11,88 @@ module Chagall
 
       def run
         setup_server
-
-        if Settings[:remote]
-          remote_build
-        else
-          local_build_and_load
-        end
-
-        verify_image
-        update_compose
+        build or raise 'Failed to build Docker image'
+        verify_image or raise 'Failed to verify Docker image'
+        update_compose_files
+        deploy
       end
 
-      # Making these methods public for dry run access
       def setup_server
         puts 'Setting up server directory...'
-        system("ssh #{Settings[:server]} 'mkdir -p #{project_folder_path}'") or
+        ssh_cmd("mkdir -p #{project_folder_path}") or
           raise 'Failed to create project directory on server'
       end
 
-      def local_build_and_load
-        puts 'Building image locally and loading to server...'
-        build_cmd = [
-          'docker buildx build',
-          '--cache-from=type=local,src=tmp/.buildx-cache',
-          '--cache-to=type=local,dest=tmp/.buildx-cache-new,mode=max',
-          '--output=type=tar,dest=-',
-          "--platform #{Settings[:platform]}",
-          "-t #{Settings[:name]}:#{Settings[:tag]}",
-          '--target production'
-        ]
-
-        build_cmd << "--build-arg #{Settings[:build_args]}" if Settings[:build_args]
-        build_cmd << '-f Dockerfile .'
-
-        full_cmd = "#{build_cmd.join(' ')} | ssh #{Settings[:server]} 'docker image load'"
-        system(full_cmd) or raise 'Failed to build and load Docker image'
-
-        # Retag if platform-specific tag was created
-        retag_cmd = "ssh #{Settings[:server]} 'docker tag #{Settings[:name]}-#{Settings[:platform]}:#{Settings[:tag]} #{Settings[:name]}:#{Settings[:tag]}'"
-        system(retag_cmd)
-      end
-
-      def remote_build
-        puts 'Building image remotely on server...'
-        build_cmd = [
-          'docker build',
-          "--platform #{Settings[:platform]}",
-          "-t #{Settings[:name]}:#{Settings[:tag]}",
-          '--target production'
-        ]
-
-        build_cmd << "--build-arg #{Settings[:build_args]}" if Settings[:build_args]
-        build_cmd << '-f Dockerfile .'
-
-        system("ssh #{Settings[:server]} '#{build_cmd.join(' ')}'") or
-          raise 'Failed to build Docker image on server'
+      def build
+        if Settings[:remote]
+          ssh_cmd(build_cmd)
+        else
+          ssh_cmd("#{build_cmd} | docker image load")
+        end
       end
 
       def verify_image
         puts 'Verifying image on server...'
+
         check_cmd = "docker images --filter=reference=#{Settings[:name]}:#{Settings[:tag]} --format '{{.ID}}' | grep ."
-        system("ssh #{Settings[:server]} '#{check_cmd}'") or
+
+        ssh_cmd(check_cmd) or
           raise "Docker image #{Settings[:name]}:#{Settings[:tag]} not found on #{Settings[:server]}"
       end
 
-      def update_compose
-        puts 'Updating compose configuration...'
-        compose_cmd = ['docker compose']
+      def tag_as_production
+        puts "Tagging Docker #{Settings[:name]}:#{Settings[:tag]} image as production..."
+
+        command = "docker tag #{Settings[:name]}:#{Settings[:tag]} #{Settings[:name]}:production"
+        ssh_cmd(command) or raise 'Failed to tag Docker image'
+      end
+
+      def build_cmd
+        cmd = [
+          'docker build',
+          "  --cache-from=type=local,src=#{Settings.options.cache_path}/.buildx-cache",
+          "  --cache-to=type=local,dest=#{Settings.options.cache_path}/.buildx-cache-new,mode=max",
+          "  --platform #{Settings.options.platform}",
+          "  --tag #{Settings.options.name}:#{Settings.options.tag}",
+          "  --target #{Settings.options.target}"
+        ]
+
+        cmd << if Settings[:remote]
+                 '  --load'
+               else
+                 '  --output=type=tar,dest=-'
+               end
+
+        cmd << "--build-arg #{Settings.options.build_args}" if Settings.options.build_args
+        cmd << "-f #{Settings.options.dockerfile} #{Settings.options.context}"
+
+        cmd.join("\n")
+      end
+
+      def update_compose_files
+        puts 'Updating compose configuration files on remote server...'
+
         Settings[:compose_files].each do |file|
-          compose_cmd << "-f #{file}"
+          remote_destination = "#{project_folder_path}/#{File.basename(file)}"
+          copy_file(file, remote_destination)
+        end
+
+        puts 'Updating compose services...'
+        compose_cmd = ['docker compose']
+        # Use the remote file paths for docker compose command
+        Settings[:compose_files].each do |f ile|
+          remote_file = "#{project_folder_path}/#{File.basename(file)}"
+          compose_cmd << "-f #{remote_file}"
         end
         compose_cmd << 'up -d'
 
-        system("ssh #{Settings[:server]} '#{compose_cmd.join(' ')}'") or
-          raise 'Failed to update compose services'
+        ssh_cmd(compose_cmd.join(' ')) or raise 'Failed to update compose services'
+      end
+
+      def copy_file(local_file, remote_destination)
+        puts "Copying #{local_file} to #{Settings[:server]}:#{remote_destination}..."
+        system("scp #{local_file} #{Settings[:server]}:#{remote_destination}") or
+          raise "Failed to copy #{local_file} to server"
       end
 
       def project_folder_path
@@ -95,8 +103,8 @@ module Chagall
         "#{project_folder_path}/#{Settings[:tag]}.tar"
       end
 
-      def generate_commit_sha
-        SecureRandom.hex(16)
+      def ssh_cmd(cmd)
+        system "ssh #{Settings[:server]} '#{cmd}'"
       end
     end
   end

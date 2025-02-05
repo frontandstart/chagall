@@ -44,7 +44,7 @@ module Chagall
         {
           key: :cache_path,
           type: :string,
-          default: File.join(Dir.pwd, 'tmp/docker-build-cache'),
+          default: 'tmp',
           flags: ['-c', '--cache-path'],
           env_name: 'CHAGALL_CACHE_PATH',
           desc: 'Cache path'
@@ -79,6 +79,28 @@ module Chagall
           flags: ['-d', '--dry-run'],
           env_name: 'CHAGALL_DRY_RUN',
           desc: 'Dry run'
+        },
+        {
+          key: :target,
+          type: :string,
+          default: 'production',
+          flags: ['--target'],
+          env_name: 'CHAGALL_TARGET',
+          desc: 'Target'
+        },
+        {
+          key: :build_args,
+          type: :string,
+          flags: ['-b', '--build-args'],
+          env_name: 'CHAGALL_BUILD_ARGS',
+          desc: 'Build arguments'
+        },
+        {
+          key: :dockerfile,
+          type: :string,
+          flags: ['-f', '--dockerfile'],
+          env_name: 'CHAGALL_DOCKERFILE',
+          desc: 'Dockerfile'
         }
       ].freeze
 
@@ -159,23 +181,18 @@ module Chagall
           opts.banner = 'Usage: chagall deploy [options]'
 
           OPTIONS.each do |option|
-            if option[:type] == :boolean
-              opts.on(option[:flags][0],
-                      "#{option[:flags][1]} [BOOLEAN]",
-                      option[:desc]) do |v|
-                @options[option[:key]] = true?(v || 'true')
-              end
-            else
-              opts.on(option[:flags][0],
-                      "#{option[:flags][1]}", "#{option[:env_name]}",
-                      option[:desc]) do |v|
-                @options[option[:key]] = case option[:type]
-                                         when :array
-                                           v.split(',')
-                                         else
-                                           v
-                                         end
-              end
+            opts.on(option[:flags][0],
+                    option[:flags][1],
+                    option[:env_name],
+                    option[:desc]) do |v|
+              @options[option[:key]] = case option[:type]
+                                       when :boolean
+                                         true?(v || 'true')
+                                       when :array
+                                         v.split(',')
+                                       else
+                                         v
+                                       end
             end
           end
 
