@@ -73,15 +73,18 @@ module Chagall
         puts 'Updating compose configuration files on remote server...'
 
         Settings[:compose_files].each do |file|
-          remote_destination = "#{project_folder_path}/#{File.basename(file)}"
+          remote_destination = "#{Settings[:projects_folder]}/#{File.basename(file)}"
           copy_file(file, remote_destination)
         end
+      end
 
+      def deploy_compose_files
         puts 'Updating compose services...'
         compose_cmd = ['docker compose']
+
         # Use the remote file paths for docker compose command
-        Settings[:compose_files].each do |f ile|
-          remote_file = "#{project_folder_path}/#{File.basename(file)}"
+        Settings[:compose_files].each do |file|
+          remote_file = "#{Settings[:projects_folder]}/#{File.basename(file)}"
           compose_cmd << "-f #{remote_file}"
         end
         compose_cmd << 'up -d'
@@ -93,14 +96,6 @@ module Chagall
         puts "Copying #{local_file} to #{Settings[:server]}:#{remote_destination}..."
         system("scp #{local_file} #{Settings[:server]}:#{remote_destination}") or
           raise "Failed to copy #{local_file} to server"
-      end
-
-      def project_folder_path
-        "chagall/#{Settings[:name]}"
-      end
-
-      def docker_image_tar_path
-        "#{project_folder_path}/#{Settings[:tag]}.tar"
       end
 
       def ssh_cmd(cmd)

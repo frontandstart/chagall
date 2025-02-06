@@ -7,6 +7,8 @@ module Chagall
     class Settings
       include Singleton
 
+      CHAGALL_PROJECTS_FOLDER = '~/chagall'.freeze
+
       OPTIONS = [
         {
           key: :server,
@@ -35,13 +37,6 @@ module Chagall
           desc: 'Compose files (comma-separated)'
         },
         {
-          key: :platform,
-          type: :string,
-          flags: ['-p', '--platform'],
-          env_name: 'CHAGALL_PLATFORM',
-          desc: 'Platform (e.g. linux/amd64)'
-        },
-        {
           key: :cache_path,
           type: :string,
           default: 'tmp',
@@ -66,13 +61,6 @@ module Chagall
           desc: 'Build remotely instead of locally'
         },
         {
-          key: :build_args,
-          type: :string,
-          flags: ['-b', '--build-args'],
-          env_name: 'CHAGALL_BUILD_ARGS',
-          desc: 'Build arguments'
-        },
-        {
           key: :dry_run,
           type: :boolean,
           default: false,
@@ -89,18 +77,28 @@ module Chagall
           desc: 'Target'
         },
         {
-          key: :build_args,
-          type: :string,
-          flags: ['-b', '--build-args'],
-          env_name: 'CHAGALL_BUILD_ARGS',
-          desc: 'Build arguments'
-        },
-        {
           key: :dockerfile,
           type: :string,
-          flags: ['-f', '--dockerfile'],
+          flags: ['-f', '--file'],
+          default: 'Dockerfile',
           env_name: 'CHAGALL_DOCKERFILE',
           desc: 'Dockerfile'
+        },
+        {
+          key: :projects_folder,
+          type: :string,
+          default: CHAGALL_PROJECTS_FOLDER,
+          flags: ['-p', '--projects-folder'],
+          env_name: 'CHAGALL_PROJECTS_FOLDER',
+          desc: 'Projects folder'
+        },
+        {
+          key: :keep_releases,
+          type: :integer,
+          default: 3,
+          flags: ['-k', '--keep-releases'],
+          env_name: 'CHAGALL_KEEP_RELEASES',
+          desc: 'Keep releases'
         }
       ].freeze
 
@@ -152,7 +150,7 @@ module Chagall
 
         begin
           config = YAML.load_file(config_file)
-          @options.merge!(symbolize_keys(config))
+          @options.merge!(config.transform_keys(&:to_sym))
         rescue StandardError => e
           puts "Warning: Error loading chagall.yml: #{e.message}"
         end
@@ -237,8 +235,16 @@ module Chagall
         %w[true y yes 1 si da sure yup].include?(value.downcase)
       end
 
-      def symbolize_keys(hash)
-        hash.transform_keys(&:to_sym)
+      def image_tag
+        @image_tag ||= "#{options[:name]}:#{options[:tag]}"
+      end
+
+      def project_folder_path
+        @project_folder_path ||= "#{options[:projects_folder]}/#{options[:name]}"
+      end
+
+      def docker_image_label
+        @docker_image_label ||= "#{options[:name]}:#{options[:tag]}"
       end
     end
   end
