@@ -19,7 +19,7 @@ module Chagall
         raise Chagall::Error, 'Invalid command'
       end
 
-      dry_run = argv.include?('--dry-run')
+      pry_console = argv.include?('--pry-console')
 
       case command
       when :deploy
@@ -30,7 +30,7 @@ module Chagall
         @chagall = Setup::Main.new(argv, dry_run: dry_run)
       end
 
-      run_pry_console if dry_run
+      run_pry_console if pry_console
     end
 
     def run_pry_console
@@ -40,17 +40,12 @@ module Chagall
       puts "- settings: The current settings (access via #{command.capitalize}::Settings.options)"
       puts "\nExample commands:"
       case command
-      when 'deploy'
+      when :deploy
         puts '- chagall.run  # Run the full deployment'
-        puts '- chagall.setup_server  # Run just the server setup'
-        puts '- chagall.local_build_and_load  # Build and load image'
-      when 'rollback'
-        puts '- chagall.run  # Run the full rollback'
-        puts '- chagall.fetch_previous_tag  # Get the previous deployment tag'
-      when 'setup'
-        puts '- chagall.run  # Run the full setup'
-        puts '- chagall.detect_services  # Detect required services'
-        puts '- chagall.generate_dockerfile  # Generate Dockerfile'
+        puts '- chagall.build  # Build the Docker image'
+        puts '- chagall.verify_image  # Verify the Docker image'
+        puts '- chagall.update_compose_files  # Update the compose files'
+        puts '- chagall.deploy_compose_files  # Deploy the compose files'
       end
       puts "- #{command.capitalize}::Settings.options  # View all settings"
       puts "\nType 'exit' to quit the console"

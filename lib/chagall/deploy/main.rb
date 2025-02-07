@@ -3,31 +3,36 @@ require_relative 'settings'
 module Chagall
   module Deploy
     class Main
-      def initialize(argv, dry_run: false)
+      def initialize(argv)
         Settings.configure(argv)
 
-        run unless dry_run
+        run
       end
 
       def run
-        setup_server
-        build or raise 'Failed to build Docker image'
-        verify_image or raise 'Failed to verify Docker image'
-        update_compose_files
-        deploy
+        setup_server(run: Settings[:dry_run])
+        build(run: Settings[:dry_run]) or raise 'Failed to build Docker image'
+        verify_image(run: Settings[:dry_run]) or raise 'Failed to verify Docker image'
+        update_compose_files(run: Settings[:dry_run])
+        deploy_compose_files(run: Settings[:dry_run])
       end
 
       def setup_server
         puts 'Setting up server directory...'
-        ssh_cmd("mkdir -p #{project_folder_path}") or
-          raise 'Failed to create project directory on server'
+        command = "mkdir -p #{project_folder_path}"
+        if Settings[:dry_run]
+          puts "DRY RUN: #{command}"
+        else
+          ssh_cmd(command) or raise 'Failed to create project directory on server'
+        end
       end
 
       def build
-        if Settings[:remote]
-          ssh_cmd(build_cmd)
+        command = Settings[:remote] ? ssh_cmd(build_cmd) : "#{build_cmd} | docker image load"
+        if Settings[:dry_run]
+          puts "DRY RUN: #{command}"
         else
-          ssh_cmd("#{build_cmd} | docker image load")
+          ssh_cmd(command)
         end
       end
 
@@ -35,9 +40,12 @@ module Chagall
         puts 'Verifying image on server...'
 
         check_cmd = "docker images --filter=reference=#{Settings[:name]}:#{Settings[:tag]} --format '{{.ID}}' | grep ."
-
-        ssh_cmd(check_cmd) or
-          raise "Docker image #{Settings[:name]}:#{Settings[:tag]} not found on #{Settings[:server]}"
+        if Settings[:dry_run]
+          puts "DRY RUN: #{check_cmd}"
+        else
+          ssh_cmd(check_cmd) or
+            raise "Docker image #{Settings[:name]}:#{Settings[:tag]} not found on #{Settings[:server]}"
+        end
       end
 
       def tag_as_production
@@ -50,11 +58,13 @@ module Chagall
       def build_cmd
         cmd = [
           'docker build',
-          "  --cache-from=type=local,src=#{Settings.options.cache_path}/.buildx-cache",
-          "  --cache-to=type=local,dest=#{Settings.options.cache_path}/.buildx-cache-new,mode=max",
-          "  --platform #{Settings.options.platform}",
-          "  --tag #{Settings.options.name}:#{Settings.options.tag}",
-          "  --target #{Settings.options.target}"
+          "  --cache-from=#{Settings[:cache_from]}",
+          "  --cache-to=#{Settings[:cache_to]}",
+          "  --platform #{Settings[:platform]}",
+          "  --tag #{Settings[:docker_image_label]}",
+          "  --target #{Settings[:target]}",
+          "  --file #{Settings[:dockerfile]}",
+          "  --context #{Settings[:context]}"
         ]
 
         cmd << if Settings[:remote]
@@ -63,8 +73,7 @@ module Chagall
                  '  --output=type=tar,dest=-'
                end
 
-        cmd << "--build-arg #{Settings.options.build_args}" if Settings.options.build_args
-        cmd << "-f #{Settings.options.dockerfile} #{Settings.options.context}"
+        cmd << "  #{Settings[:context]}"
 
         cmd.join("\n")
       end
@@ -94,12 +103,18 @@ module Chagall
 
       def copy_file(local_file, remote_destination)
         puts "Copying #{local_file} to #{Settings[:server]}:#{remote_destination}..."
-        system("scp #{local_file} #{Settings[:server]}:#{remote_destination}") or
-          raise "Failed to copy #{local_file} to server"
+        command = "scp #{local_file} #{Settings[:server]}:#{remote_destination}"
+        if Settings[:dry_run]
+          puts "DRY RUN: #{command}"
+          true
+        else
+          system(command) or raise "Failed to copy #{local_file} to server"
+        end
       end
 
       def ssh_cmd(cmd)
-        system "ssh #{Settings[:server]} '#{cmd}'"
+        full_cmd = "ssh #{Settings[:server]} '#{cmd}'"
+        system(full_cmd)
       end
     end
   end
