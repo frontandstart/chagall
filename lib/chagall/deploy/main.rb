@@ -10,21 +10,17 @@ module Chagall
       end
 
       def run
-        setup_server(run: Settings[:dry_run])
-        build(run: Settings[:dry_run]) or raise 'Failed to build Docker image'
-        verify_image(run: Settings[:dry_run]) or raise 'Failed to verify Docker image'
-        update_compose_files(run: Settings[:dry_run])
-        deploy_compose_files(run: Settings[:dry_run])
+        setup_server
+        build
+        verify_image
+        update_compose_files
+        deploy
       end
 
       def setup_server
         puts 'Setting up server directory...'
-        command = "mkdir -p #{project_folder_path}"
-        if Settings[:dry_run]
-          puts "DRY RUN: #{command}"
-        else
-          ssh_cmd(command) or raise 'Failed to create project directory on server'
-        end
+        command = "echo 'Mock: Setting up server docker & directory...'"
+        execute(command)
       end
 
       def build
@@ -58,13 +54,13 @@ module Chagall
       def build_cmd
         cmd = [
           'docker build',
-          "  --cache-from=#{Settings[:cache_from]}",
-          "  --cache-to=#{Settings[:cache_to]}",
-          "  --platform #{Settings[:platform]}",
-          "  --tag #{Settings[:docker_image_label]}",
-          "  --target #{Settings[:target]}",
-          "  --file #{Settings[:dockerfile]}",
-          "  --context #{Settings[:context]}"
+          "  --cache-from=#{Settings.options[:cache_from]}",
+          "  --cache-to=#{Settings.options[:cache_to]}",
+          "  --platform #{Settings.options[:platform]}",
+          "  --tag #{Settings.instance.tag}",
+          "  --target #{Settings.options[:target]}",
+          "  --file #{Settings.options[:dockerfile]}",
+          Settings.instanceo.context
         ]
 
         cmd << if Settings[:remote]
@@ -89,16 +85,17 @@ module Chagall
 
       def deploy_compose_files
         puts 'Updating compose services...'
-        compose_cmd = ['docker compose']
+        deploy_command = ['docker compose']
 
         # Use the remote file paths for docker compose command
         Settings[:compose_files].each do |file|
           remote_file = "#{Settings[:projects_folder]}/#{File.basename(file)}"
-          compose_cmd << "-f #{remote_file}"
+          deploy_command << "-f #{remote_file}"
         end
-        compose_cmd << 'up -d'
+        deploy_command << 'up -d'
 
-        ssh_cmd(compose_cmd.join(' ')) or raise 'Failed to update compose services'
+        execute(deploy_command.join(' '),
+                directory: Settings[:projects_folder]) or raise 'Failed to update compose services'
       end
 
       def copy_file(local_file, remote_destination)
@@ -112,9 +109,23 @@ module Chagall
         end
       end
 
-      def ssh_cmd(cmd)
-        full_cmd = "ssh #{Settings[:server]} '#{cmd}'"
-        system(full_cmd)
+      def deploy
+        tag_as_production
+        deploy_compose_files
+      end
+
+      def execute(command, directory: nil, force: false)
+        command = if directory
+                    "ssh #{Settings[:server]} 'cd #{directory} && #{command}'"
+                  else
+                    "ssh #{Settings[:server]} '#{command}'"
+                  end
+
+        if Settings[:dry_run] && !force
+          puts "DRY RUN: #{command}"
+        else
+          system(command)
+        end
       end
     end
   end

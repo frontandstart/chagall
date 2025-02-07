@@ -28,6 +28,15 @@ module Chagall
           env_name: 'CHAGALL_NAME'
         },
         {
+          key: :release,
+          flags: ['--release'],
+          description: 'Release tag',
+          required: true,
+          default: `git rev-parse --abbrev-ref HEAD`.strip,
+          type: :string,
+          env_name: 'CHAGALL_RELEASE'
+        },
+        {
           key: :dry_run,
           type: :boolean,
           default: false,
@@ -48,15 +57,9 @@ module Chagall
           flags: ['-c', '--compose-files'],
           description: 'Comma separated list of compose files',
           type: :array,
+          required: true,
           default: [],
           env_name: 'CHAGALL_COMPOSE_FILES'
-        },
-        {
-          key: :release,
-          flags: ['--release'],
-          description: 'Release tag',
-          type: :string,
-          env_name: 'CHAGALL_RELEASE'
         },
         {
           key: :target,
@@ -139,8 +142,6 @@ module Chagall
         parse_arguments
         validate_options
       end
-
-      private
 
       def load_defaults_config_and_environment_variables
         OPTIONS.each do |option|
@@ -267,7 +268,7 @@ module Chagall
       end
 
       def tag
-        @tag ||= options[:tag] || "#{options[:name]}:#{`git rev-parse --abbrev-ref HEAD`.strip}"
+        "#{options[:name]}:#{options[:release]}"
       end
     end
   end

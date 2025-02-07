@@ -19,21 +19,21 @@ module Chagall
         raise Chagall::Error, 'Invalid command'
       end
 
-      pry_console = argv.include?('--pry-console')
+      console = argv.include?('--console')
 
       case command
       when :deploy
-        @chagall = Deploy::Main.new(argv, dry_run: dry_run)
+        @chagall = Deploy::Main.new(argv)
       when :rollback
-        @chagall = Rollback::Main.new(argv, dry_run: dry_run)
+        @chagall = Rollback::Main.new(argv)
       when :setup
-        @chagall = Setup::Main.new(argv, dry_run: dry_run)
+        @chagall = Setup::Main.new(argv)
       end
 
-      run_pry_console if pry_console
+      run_console if console
     end
 
-    def run_pry_console
+    def run_console
       puts "Dry run mode enabled have chagall object available #{chagall}"
       puts "\nEntering Pry console in dry run mode for #{command}. Available objects:"
       puts "- chagall: The #{command.capitalize}::Main instance"
@@ -48,6 +48,7 @@ module Chagall
         puts '- chagall.deploy_compose_files  # Deploy the compose files'
       end
       puts "- #{command.capitalize}::Settings.options  # View all settings"
+      puts "\nNote: In dry-run mode, all commands are printed. To execute a command for real, pass force: true, e.g. chagall.build(force: true)."
       puts "\nType 'exit' to quit the console"
       binding.pry
     end
