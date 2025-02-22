@@ -3,22 +3,27 @@ require_relative '../../../chagall/lib/chagall/deploy/main'
 require 'stringio'
 
 RSpec.describe Chagall::Deploy::Main do
-  let(:dummy_argv) { ['--dry-run', '--server', 'example.com'] }
+  let(:dummy_argv) { ['--dry-run', '--server', 'localhost', '-', ''] }
   subject { described_class.new(dummy_argv) }
   let(:main_instance) { subject }
+  let(:run_id) { UuidTools::UUID.timestamp_create.to_s }
+  let(:tag) { SecureRandom.hex(4) }
 
   before do
-    # Stub Settings values for testing
     allow(Settings).to receive(:[]).and_call_original
-    allow(Settings).to receive(:[]).with(:projects_folder).and_return('/tmp/projects')
+    allow(Settings).to receive(:[]).with(:projects_folder).and_return("/tmp/projects/#{run_id}")
     allow(Settings).to receive(:[]).with(:tag).and_return('v1')
-    allow(Settings).to receive(:[]).with(:server).and_return('test-server')
-    allow(main_instance).to receive(:run) # Prevent actual run execution
+    allow(Settings).to receive(:[]).with(:server).and_return('localserver')
+    allow(main_instance).to receive(:run)
+  end
+
+  let(:generate_project_folder) do
+    "/tmp/test_#{run_id}"
   end
 
   describe '#sync_build_context' do
     it 'creates remote build directory and syncs code' do
-      expected_folder = '/tmp/projects/build/v1'
+      expected_folder = generate_project_folder
       expect(main_instance).to receive(:ssh_cmd).with("mkdir -p #{expected_folder}").and_return(true)
       expect(main_instance).to receive(:system).with(a_string_including('rsync -avz')).and_return(true)
       folder = main_instance.sync_build_context

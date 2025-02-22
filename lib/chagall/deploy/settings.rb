@@ -58,7 +58,6 @@ module Chagall
           description: 'Comma separated list of compose files',
           type: :array,
           required: true,
-          default: [],
           env_name: 'CHAGALL_COMPOSE_FILES'
         },
         {

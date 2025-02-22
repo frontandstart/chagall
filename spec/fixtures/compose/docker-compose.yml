@@ -1,0 +1,7 @@
+version: '3.8'
+services:
+  web:
+    image: test-app-web
+    build: ./app
+    ports:
+      - "3000:3000" 

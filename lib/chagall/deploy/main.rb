@@ -54,13 +54,13 @@ module Chagall
       def build_cmd
         cmd = [
           'docker build',
-          "  --cache-from=#{Settings.options[:cache_from]}",
-          "  --cache-to=#{Settings.options[:cache_to]}",
+          "  --cache-from #{Settings.options[:cache_from]}",
+          "  --cache-to #{Settings.options[:cache_to]}",
           "  --platform #{Settings.options[:platform]}",
           "  --tag #{Settings.instance.tag}",
           "  --target #{Settings.options[:target]}",
           "  --file #{Settings.options[:dockerfile]}",
-          Settings.instanceo.context
+          Settings.instance.context
         ]
 
         cmd << if Settings[:remote]

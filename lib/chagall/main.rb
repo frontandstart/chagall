@@ -12,14 +12,15 @@ module Chagall
     attr_accessor :chagall, :command
 
     def initialize(argv)
+      parse_arguments(argv)
+
       @command = argv.shift.downcase.to_sym
+      console = !argv.delete('--console').nil?
 
       unless AVAILABLE_COMMANDS.include?(command)
         puts "Usage: chagall <command> [options]\nCommands: #{AVAILABLE_COMMANDS.join(', ')}"
         raise Chagall::Error, 'Invalid command'
       end
-
-      console = argv.include?('--console')
 
       case command
       when :deploy
@@ -31,6 +32,16 @@ module Chagall
       end
 
       run_console if console
+    end
+
+    def parse_arguments(argv)
+      OptionParser.new do |opts|
+        opts.banner = "Usage: chagall #{command} [options]"
+
+        opts.on('--console', 'Enter Pry console after parsing options') do
+          @console = true
+        end
+      end
     end
 
     def run_console
@@ -50,7 +61,6 @@ module Chagall
       puts "- #{command.capitalize}::Settings.options  # View all settings"
       puts "\nNote: In dry-run mode, all commands are printed. To execute a command for real, pass force: true, e.g. chagall.build(force: true)."
       puts "\nType 'exit' to quit the console"
-      binding.pry
     end
   end
 end

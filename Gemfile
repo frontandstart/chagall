@@ -8,7 +8,11 @@ group :rubocop do
 end
 
 group :development, :test do
+  gem 'byebug'
+  # gem
   gem 'pry'
   gem 'rake'
+  gem 'rspec-core'
+  gem 'rspec-expectations'
   gem 'webmock'
 end
