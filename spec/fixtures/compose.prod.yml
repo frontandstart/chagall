@@ -1,0 +1,36 @@
+version: '3.8'
+services:
+  web:
+    image: test-app-web-prod
+    build: .
+    ports:
+      - "80:3000"
+    environment:
+      - RAILS_ENV=production
+    labels:
+      reproxy.server: domain.com,www.domain.com
+      reproxy.route: ^/(.*)
+      reproxy.port: ${PORT:-3000}
+      reproxy.enabled: true
+      reproxy.assets: /assets:/app/public/assets,/storage:/app/public/storage
+      reproxy.keep_host: true
+
+  reproxy:
+    container_name: reproxy-prod
+    image: umputun/reproxy
+    restart: always
+    ports:
+      - 80:8080
+      - 443:8443
+    environment:
+      SSL_TYPE: auto
+      DOCKER_ENABLED: true
+      KEEP_HOST: true
+      DEBUG: true
+      SSL_ACME_LOCATION: /srv/var/acme
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - certs:/srv/var/acme
+
+
+    

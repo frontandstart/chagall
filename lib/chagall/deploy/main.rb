@@ -20,15 +20,15 @@ module Chagall
       def setup_server
         puts 'Setting up server directory...'
         command = "echo 'Mock: Setting up server docker & directory...'"
-        execute(command)
+        ssh_execute(command)
       end
 
       def build
-        command = Settings[:remote] ? ssh_cmd(build_cmd) : "#{build_cmd} | docker image load"
+        command = Settings[:remote] ? ssh_execute(build_cmd) : "#{build_cmd} | docker image load"
         if Settings[:dry_run]
           puts "DRY RUN: #{command}"
         else
-          ssh_cmd(command)
+          ssh_execute(command)
         end
       end
 
@@ -39,7 +39,7 @@ module Chagall
         if Settings[:dry_run]
           puts "DRY RUN: #{check_cmd}"
         else
-          ssh_cmd(check_cmd) or
+          ssh_execute(check_cmd) or
             raise "Docker image #{Settings[:name]}:#{Settings[:tag]} not found on #{Settings[:server]}"
         end
       end
@@ -48,19 +48,19 @@ module Chagall
         puts "Tagging Docker #{Settings[:name]}:#{Settings[:tag]} image as production..."
 
         command = "docker tag #{Settings[:name]}:#{Settings[:tag]} #{Settings[:name]}:production"
-        ssh_cmd(command) or raise 'Failed to tag Docker image'
+        ssh_execute(command) or raise 'Failed to tag Docker image'
       end
 
       def build_cmd
         cmd = [
           'docker build',
-          "  --cache-from #{Settings.options[:cache_from]}",
-          "  --cache-to #{Settings.options[:cache_to]}",
-          "  --platform #{Settings.options[:platform]}",
+          "  --cache-from #{Settings[:cache_from]}",
+          "  --cache-to #{Settings[:cache_to]}",
+          "  --platform #{Settings[:platform]}",
           "  --tag #{Settings.instance.tag}",
-          "  --target #{Settings.options[:target]}",
-          "  --file #{Settings.options[:dockerfile]}",
-          Settings.instance.context
+          "  --target #{Settings[:target]}",
+          "  --file #{Settings[:dockerfile]}",
+          Settings[:context]
         ]
 
         cmd << if Settings[:remote]
@@ -77,6 +77,10 @@ module Chagall
       def update_compose_files
         puts 'Updating compose configuration files on remote server...'
 
+        # binding
+        byebug
+        p "Settings[:compose_files] #{Settings[:compose_files]}"
+
         Settings[:compose_files].each do |file|
           remote_destination = "#{Settings[:projects_folder]}/#{File.basename(file)}"
           copy_file(file, remote_destination)
@@ -88,14 +92,15 @@ module Chagall
         deploy_command = ['docker compose']
 
         # Use the remote file paths for docker compose command
+
         Settings[:compose_files].each do |file|
           remote_file = "#{Settings[:projects_folder]}/#{File.basename(file)}"
           deploy_command << "-f #{remote_file}"
         end
         deploy_command << 'up -d'
 
-        execute(deploy_command.join(' '),
-                directory: Settings[:projects_folder]) or raise 'Failed to update compose services'
+        ssh_execute(deploy_command.join(' '),
+                    directory: Settings[:projects_folder]) or raise 'Failed to update compose services'
       end
 
       def copy_file(local_file, remote_destination)
@@ -114,11 +119,11 @@ module Chagall
         deploy_compose_files
       end
 
-      def execute(command, directory: nil, force: false)
+      def ssh_execute(command, directory: nil, force: false)
         command = if directory
-                    "ssh #{Settings[:server]} 'cd #{directory} && #{command}'"
+                    "ssh #{Settings[:ssh_args]} #{Settings[:server]} 'cd #{directory} && #{command}'"
                   else
-                    "ssh #{Settings[:server]} '#{command}'"
+                    "ssh #{Settings[:ssh_args]}  #{Settings[:server]} '#{command}'"
                   end
 
         if Settings[:dry_run] && !force

@@ -107,6 +107,19 @@ module Chagall
           flags: ['-k', '--keep-releases'],
           env_name: 'CHAGALL_KEEP_RELEASES',
           desc: 'Keep releases'
+        },
+        {
+          key: :ssh_args,
+          type: :string,
+          default: '-o StrictHostKeyChecking=no',
+          env_name: 'CHAGALL_SSH_ARGS',
+          flags: ['--ssh-args']
+        },
+        {
+          key: :context,
+          type: :string,
+          env_name: 'CHAGALL_CONTEXT',
+          default: '.'
         }
       ].freeze
 
@@ -145,10 +158,7 @@ module Chagall
       def load_defaults_config_and_environment_variables
         OPTIONS.each do |option|
           @options[option[:key]] = option[:default] if option.key?(:default)
-
-          if (config = config_file) && config[option[:key]]
-            @options[option[:key]] = config[option[:key]]
-          end
+          @options[option[:key]] = config_file[option[:key]] if config_file[option[:key]]
 
           override_option_from_environment_variable(option)
         end
