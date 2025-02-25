@@ -2,5 +2,7 @@ source 'https://rubygems.org'
 git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
 ruby '3.3.7'
+gem 'puma' # Add a web server for proper operation
+gem 'rack', '~> 3.0'
 
-gem 'chagall'
+# gem 'chagall'

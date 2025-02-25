@@ -15,7 +15,7 @@ module Chagall
       parse_arguments(argv)
 
       @command = argv.shift.downcase.to_sym
-      console = !argv.delete('--console').nil?
+      console = argv.include?('--console')
 
       unless AVAILABLE_COMMANDS.include?(command)
         puts "Usage: chagall <command> [options]\nCommands: #{AVAILABLE_COMMANDS.join(', ')}"

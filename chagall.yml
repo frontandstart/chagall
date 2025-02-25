@@ -13,8 +13,8 @@ build_args:
   - --build-arg=key=value
   - --build-arg=key2=value2
 
-cache_from: type=local,src=tmp/.buildx-cache
-cache_to: type=local,dest=tmp/.buildx-cache-new,mode=max
+cache_from: tmp/.buildx-cache
+cache_to: tmp/.buildx-cache-new,mode=max
 
 keep_releases: 3
 

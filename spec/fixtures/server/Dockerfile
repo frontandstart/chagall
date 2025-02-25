@@ -7,7 +7,8 @@ RUN ssh-keygen -A
 RUN mkdir -p /root/.ssh \
     && chmod 700 /root/.ssh
 
-COPY spec/fixtures/server/key.pub /root/.ssh/authorized_keys
+# COPY spec/fixtures/server/key.pub /root/.ssh/authorized_keys
+COPY key.pub /root/.ssh/authorized_keys
 RUN chmod 600 /root/.ssh/authorized_keys
 
 RUN sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config \

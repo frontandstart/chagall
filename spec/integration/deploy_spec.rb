@@ -12,11 +12,7 @@ RSpec.describe 'Chagall Deployment' do
     # Setup complete application structure
     FileUtils.mkdir_p(File.join(test_dir, 'app'))
 
-    FileUtils.cp(File.join('spec/fixtures/compose.prod.yml'), test_dir)
-    FileUtils.cp(File.join('spec/fixtures/compose.yml'), test_dir)
-    FileUtils.cp(File.join('spec/fixtures/Dockerfile'), test_dir)
-    FileUtils.cp(File.join('spec/fixtures/Gemfile'), test_dir)
-    FileUtils.cp(File.join('spec/fixtures/chagall.yml'), test_dir)
+    FileUtils.cp_r(File.join('spec/fixtures/sample-app/'), test_dir)
 
     # Initialize Git repo
     Dir.chdir(test_dir) do
@@ -27,12 +23,10 @@ RSpec.describe 'Chagall Deployment' do
       `git commit -m "Initial commit"`
     end
 
-    # Build SSH server image if not exists
     unless system('docker image inspect ssh-server:latest > /dev/null 2>&1')
       system('docker compose -f spec/fixtures/server/compose.yml build') || raise('Failed to build SSH server image')
     end
 
-    # Start SSH container
     system("docker run -d --name #{container_name} -p 2222:22 ssh-server") || raise('Failed to start SSH container')
   end
 

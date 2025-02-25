@@ -7,7 +7,7 @@ module Chagall
     class Settings
       include Singleton
 
-      CHAGALL_PROJECTS_FOLDER = '~/chagall'.freeze
+      CHAGALL_PROJECTS_FOLDER = '~/projects'.freeze
       TMP_CACHE_FOLDER = 'tmp'.freeze
 
       OPTIONS = [
@@ -32,7 +32,7 @@ module Chagall
           flags: ['--release'],
           description: 'Release tag',
           required: true,
-          default: `git rev-parse --abbrev-ref HEAD`.strip,
+          default: `git rev-parse --short HEAD`.strip,
           type: :string,
           env_name: 'CHAGALL_RELEASE'
         },
@@ -120,6 +120,12 @@ module Chagall
           type: :string,
           env_name: 'CHAGALL_CONTEXT',
           default: '.'
+        },
+        {
+          key: :platform,
+          type: :string,
+          env_name: 'CHAGALL_PLATFORM',
+          default: 'linux/x86_64'
         }
       ].freeze
 
@@ -186,15 +192,6 @@ module Chagall
             end
           end
         end
-
-        # This removes 'known' flags from @argv and leaves the remaining arguments
-        remaining_args = parser.order!(@argv)
-        @options[:docker_build_args] = remaining_args
-      rescue OptionParser::InvalidOption => e
-        # Handle unknown options (or forward them as docker args)
-        @options[:docker_build_args] ||= []
-        @options[:docker_build_args] << e.args.join(' ')
-        retry
       end
 
       def validate_options
@@ -266,14 +263,6 @@ module Chagall
 
       def docker_image_label
         @docker_image_label ||= "#{options[:name]}:#{options[:tag]}"
-      end
-
-      def cache_from
-        @cache_from ||= "type=local,src=#{options[:cache_path]}/.buildx-cache"
-      end
-
-      def cache_to
-        @cache_to ||= "type=local,dest=#{options[:cache_path]}/.buildx-cache-new,mode=max"
       end
 
       def tag

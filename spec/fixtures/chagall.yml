@@ -1,8 +1,0 @@
-project: test-app
-environment: production
-server: localhost
-compose_files:
-  - compose.yml
-  - compose.prod.yml
-keep_releases: 3
-ssh_args: -o StrictHostKeyChecking=no -i ~/projects/opensource/chagall/spec/fixtures/server/key -p 2222
