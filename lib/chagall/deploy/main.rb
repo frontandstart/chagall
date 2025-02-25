@@ -7,7 +7,7 @@ module Chagall
         Settings.configure(argv)
 
         p Settings.options
-        binding.pry
+        # binding.pry
         run
       rescue StandardError => e
         puts "Deployment failed: #{e.message}"
@@ -18,11 +18,10 @@ module Chagall
       def run
         setup_server
         build
-        load_image_to_server
-        rotate_cache
-        verify_image
-        update_compose_files
-        deploy
+        # rotate_cache
+        # verify_image
+        # update_compose_files
+        # deploy
       end
 
       def setup_server
@@ -32,7 +31,8 @@ module Chagall
       end
 
       def build
-        p "DEBUG: build_cmd #{build_cmd}"
+        p 'DEBUG: build_cmd'
+        puts build_cmd
         if Settings[:dry_run]
           puts "DRY RUN: #{build_cmd}"
         else
@@ -72,28 +72,30 @@ module Chagall
 
       def build_cmd
         args = [
-          'docker build',
           "--cache-from #{Settings[:cache_from]}",
           "--cache-to #{Settings[:cache_to]}",
           "--platform #{Settings[:platform]}",
           "--tag #{Settings.instance.tag}",
           "--target #{Settings[:target]}",
-          "--file #{Settings[:dockerfile]}",
-          '--load'
+          "--file #{Settings[:dockerfile]}"
         ]
 
         if Settings[:remote]
           args.push('--load')
         else
-          args.push('--output type=local,dest=-')
+          args.push('--output type=docker,dest=-')
         end
 
-        args << Settings[:context] if Settings[:context]
+        args.push(Settings[:context])
 
+        args = args.map { |arg| "    #{arg}" }
+                   .join("\\\n")
+
+        cmd =  "docker build \\\n#{args}"
         if Settings[:remote]
-          # TODO: implement remote build
+          ssh_command(cmd)
         else
-          "#{args.join(' \\\n  ')} | #{ssh_command('docker load')}"
+          "#{cmd} | #{ssh_command('docker load')}"
         end
       end
 
