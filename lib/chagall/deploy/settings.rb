@@ -87,7 +87,7 @@ module Chagall
         {
           key: :cache_from,
           type: :string,
-          default: "type=local,src=#{TMP_CACHE_FOLDER}/.buildx-cache",
+          default: "#{TMP_CACHE_FOLDER}/.buildx-cache",
           flags: ['--cache-from'],
           env_name: 'CHAGALL_CACHE_FROM',
           desc: 'Cache from'
@@ -95,7 +95,7 @@ module Chagall
         {
           key: :cache_to,
           type: :string,
-          default: "type=local,dest=#{TMP_CACHE_FOLDER}/.buildx-cache-new,mode=max",
+          default: "#{TMP_CACHE_FOLDER}/.buildx-cache-new",
           flags: ['--cache-to'],
           env_name: 'CHAGALL_CACHE_TO',
           desc: 'Cache to'
@@ -254,7 +254,7 @@ module Chagall
       end
 
       def image_tag
-        @image_tag ||= "#{options[:name]}:#{options[:tag]}"
+        @image_tag ||= "#{options[:name]}:#{options[:release]}"
       end
 
       def project_folder_path
@@ -263,10 +263,6 @@ module Chagall
 
       def docker_image_label
         @docker_image_label ||= "#{options[:name]}:#{options[:tag]}"
-      end
-
-      def tag
-        "#{options[:name]}:#{options[:release]}"
       end
     end
   end

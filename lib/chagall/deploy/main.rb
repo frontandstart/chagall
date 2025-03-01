@@ -1,4 +1,5 @@
 require_relative 'settings'
+require 'digest'
 
 module Chagall
   module Deploy
@@ -6,8 +7,6 @@ module Chagall
       def initialize(argv)
         Settings.configure(argv)
 
-        p Settings.options
-        # binding.pry
         run
       rescue StandardError => e
         puts "Deployment failed: #{e.message}"
@@ -17,11 +16,20 @@ module Chagall
 
       def run
         setup_server
+
+        # Check if image exists and compose files are up to date
+        if verify_image(check_only: true)
+          puts "Image #{Settings.instance.image_tag} exists and compose files are up to date"
+          puts 'Proceeding with deployment...'
+          deploy
+          return
+        end
+
         build
-        # rotate_cache
-        # verify_image
-        # update_compose_files
-        # deploy
+        rotate_cache
+        update_compose_files
+        verify_image
+        deploy
       end
 
       def setup_server
@@ -40,42 +48,56 @@ module Chagall
         end
       end
 
-      def load_image_to_server
-        return
-
-        system "docker save #{Settings.instance.tag} | #{ssh_execute('docker load')}"
-      end
-
       def rotate_cache
         system("rm -rf #{Settings[:cache_from]}")
         system("mv #{Settings[:cache_to]} #{Settings[:cache_from]}")
       end
 
-      def verify_image
+      def verify_image(check_only: false)
         puts 'Verifying image on server...'
 
-        check_cmd = "docker images --filter=reference=#{Settings[:name]}:#{Settings[:tag]} --format '{{.ID}}' | grep ."
-        if Settings[:dry_run]
-          puts "DRY RUN: #{check_cmd}"
-        else
-          ssh_execute(check_cmd) or
-            raise "Docker image #{Settings[:name]}:#{Settings[:tag]} not found on #{Settings[:server]}"
+        check_cmd = "docker images --filter=reference=#{Settings.instance.image_tag} --format '{{.ID}}' | grep ."
+
+        # Use backticks to capture output instead of system
+        output = `#{ssh_command(check_cmd)} 2>/dev/null`.strip
+        exists = !output.empty?
+
+        if check_only
+          puts "Image #{exists ? 'found' : 'not found'}: #{Settings.instance.image_tag}"
+          return exists
+        end
+
+        raise "Docker image #{Settings.instance.image_tag} not found on #{Settings[:server]}" unless exists
+
+        true
+      end
+
+      def verify_compose_files
+        puts 'Verifying compose files on server...'
+
+        Settings[:compose_files].all? do |file|
+          remote_file = "#{Settings[:projects_folder]}/#{File.basename(file)}"
+          local_md5 = ::Digest::MD5.file(file).hexdigest
+
+          check_cmd = "md5sum #{remote_file} 2>/dev/null | cut -d' ' -f1"
+          remote_md5 = `#{ssh_command(check_cmd)}`.strip
+          local_md5 == remote_md5
         end
       end
 
       def tag_as_production
-        puts "Tagging Docker #{Settings[:name]}:#{Settings[:tag]} image as production..."
+        puts "Tagging Docker #{Settings.instance.image_tag} image as production..."
 
-        command = "docker tag #{Settings[:name]}:#{Settings[:tag]} #{Settings[:name]}:production"
+        command = "docker tag #{Settings.instance.image_tag} #{Settings[:name]}:production"
         ssh_execute(command) or raise 'Failed to tag Docker image'
       end
 
       def build_cmd
         args = [
-          "--cache-from #{Settings[:cache_from]}",
-          "--cache-to #{Settings[:cache_to]}",
+          "--cache-from type=local,src=#{Settings[:cache_from]}",
+          "--cache-to type=local,dest=#{Settings[:cache_to]},mode=max",
           "--platform #{Settings[:platform]}",
-          "--tag #{Settings.instance.tag}",
+          "--tag #{Settings.instance.image_tag}",
           "--target #{Settings[:target]}",
           "--file #{Settings[:dockerfile]}"
         ]
@@ -102,11 +124,8 @@ module Chagall
       def update_compose_files
         puts 'Updating compose configuration files on remote server...'
 
-        # binding
-        p "Settings[:compose_files] #{Settings[:compose_files]}"
-
         Settings[:compose_files].each do |file|
-          remote_destination = "#{Settings[:projects_folder]}/#{File.basename(file)}"
+          remote_destination = "#{Settings.instance.project_folder_path}/#{File.basename(file)}"
           copy_file(file, remote_destination)
         end
       end
@@ -118,28 +137,24 @@ module Chagall
         # Use the remote file paths for docker compose command
 
         Settings[:compose_files].each do |file|
-          remote_file = "#{Settings[:projects_folder]}/#{File.basename(file)}"
-          deploy_command << "-f #{remote_file}"
+          deploy_command << "-f #{File.basename(file)}"
         end
         deploy_command << 'up -d'
 
         ssh_execute(deploy_command.join(' '),
-                    directory: Settings[:projects_folder]) or raise 'Failed to update compose services'
+                    directory: Settings.instance.project_folder_path) or raise 'Failed to update compose services'
       end
 
       def copy_file(local_file, remote_destination)
         puts "Copying #{local_file} to #{Settings[:server]}:#{remote_destination}..."
         command = "scp #{local_file} #{Settings[:server]}:#{remote_destination}"
-        if Settings[:dry_run]
-          puts "DRY RUN: #{command}"
-          true
-        else
-          system(command) or raise "Failed to copy #{local_file} to server"
-        end
+
+        system(command) or raise "Failed to copy #{local_file} to server"
       end
 
       def deploy
         tag_as_production
+        update_compose_files
         deploy_compose_files
       end
 
