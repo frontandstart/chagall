@@ -260,10 +260,6 @@ module Chagall
       def project_folder_path
         @project_folder_path ||= "#{options[:projects_folder]}/#{options[:name]}"
       end
-
-      def docker_image_label
-        @docker_image_label ||= "#{options[:name]}:#{options[:tag]}"
-      end
     end
   end
 end

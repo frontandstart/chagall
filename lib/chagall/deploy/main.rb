@@ -15,6 +15,7 @@ module Chagall
       end
 
       def run
+        check_uncommit_changes
         setup_server
 
         # Check if image exists and compose files are up to date
@@ -32,9 +33,16 @@ module Chagall
         deploy
       end
 
+      def check_uncommit_changes
+        puts 'Checking for uncommitted changes...'
+        status = `git status --porcelain`.strip
+
+        raise 'Uncommitted changes found. Commit first' unless status.empty?
+      end
+
       def setup_server
         puts 'Setting up server directory...'
-        command = "mkdir -p #{Settings[:projects_folder]}/#{Settings[:name]}"
+        command = "mkdir -p #{Settings.instance.project_folder_path}"
         ssh_execute(command)
       end
 
@@ -156,6 +164,40 @@ module Chagall
         tag_as_production
         update_compose_files
         deploy_compose_files
+        rotate_releases
+      end
+
+      def rotate_releases
+        # Write file with name commmit sha to Settings.instance.project_folder_path/releases folder
+        # Cleanup old docker images
+        puts 'Rotating releases...'
+        release_folder = "#{Settings.instance.project_folder_path}/releases"
+        release_file = "#{release_folder}/#{Settings[:release]}"
+
+        # Create releases directory if it doesn't exist
+        ssh_execute("mkdir -p #{release_folder}")
+
+        # Save current release
+        ssh_execute("touch #{release_file}")
+
+        # Get list of releases sorted by modification time (newest first)
+        list_cmd = "ls -t #{release_folder}"
+        releases = `#{ssh_command(list_cmd)}`.strip.split("\n")
+
+        # Keep only the last N releases
+        return unless releases.length > Settings[:keep_releases]
+
+        releases_to_remove = releases[Settings[:keep_releases]..-1]
+
+        # Remove old release files
+        releases_to_remove.each do |release|
+          ssh_execute("rm #{release_folder}/#{release}")
+
+          # Remove corresponding Docker image
+          image = "#{Settings[:name]}:#{release}"
+          puts "Removing old Docker image: #{image}"
+          ssh_execute("docker rmi #{image} || true") # Use || true to prevent failure if image is already removed
+        end
       end
 
       def ssh_command(command, directory: nil)
