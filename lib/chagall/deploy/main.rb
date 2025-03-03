@@ -15,6 +15,7 @@ module Chagall
 
       def initialize(argv)
         @interrupted = false
+        @total_time = 0.0
         setup_signal_handlers
         setup_logger
         Settings.configure(argv)
@@ -22,10 +23,12 @@ module Chagall
         run
       rescue Interrupt
         logger.info "\nDeployment interrupted by user"
+        print_total_time
         cleanup_and_exit
       rescue StandardError => e
         logger.error "Deployment failed: #{e.message}"
         logger.debug e.backtrace.join("\n") if ENV['DEBUG']
+        print_total_time
         exit 1
       end
 
@@ -60,7 +63,7 @@ module Chagall
 
       private
 
-      attr_reader :logger
+      attr_reader :logger, :total_time
 
       def setup_logger
         @logger = Logger.new($stdout)
@@ -75,20 +78,29 @@ module Chagall
         @logger.level = LOG_LEVELS[ENV.fetch('LOG_LEVEL', 'info').downcase] || Logger::INFO
       end
 
+      def print_total_time
+        logger.info "Total execution time: #{format('%.2f', @total_time)}s"
+      end
+
       def t(title)
         logger.info "[#{title.upcase}]..."
         start_time = Time.now
         result = yield
         duration = Time.now - start_time
+        @total_time += duration
         logger.info " done #{'%.2f' % duration}s"
         check_interrupted
         result
       rescue StandardError => e
-        puts " failed #{format('%.2f', (Time.now - start_time))}s"
+        duration = Time.now - start_time
+        @total_time += duration
+        logger.error " failed #{format('%.2f', duration)}s"
         raise
       end
 
       def run
+        start_time = Time.now
+
         t('Checking uncommitted changes') { check_uncommit_changes }
         t('Setting up server') { setup_server }
 
@@ -99,16 +111,17 @@ module Chagall
           t('update compose files') { update_compose_files }
           t('deploy compose files') { deploy_compose_files }
           t('rotate release') { rotate_releases }
-          return
+        else
+          t('Building image') { build }
+          t('Rotating cache') { rotate_cache }
+          t('Verifying image') { verify_image }
+          t('tag as production') { tag_as_production }
+          t('update compose files') { update_compose_files }
+          t('deploy compose files') { deploy_compose_files }
+          t('rotate release') { rotate_releases }
         end
 
-        t('Building image') { build }
-        t('Rotating cache') { rotate_cache }
-        t('Verifying image') { verify_image }
-        t('tag as production') { tag_as_production }
-        t('update compose files') { update_compose_files }
-        t('deploy compose files') { deploy_compose_files }
-        t('rotate release') { rotate_releases }
+        print_total_time
       end
 
       def check_uncommit_changes
