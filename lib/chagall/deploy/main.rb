@@ -1,60 +1,129 @@
 require_relative 'settings'
 require 'digest'
+require 'benchmark'
+require 'logger'
 
 module Chagall
   module Deploy
     class Main
+      LOG_LEVELS = {
+        'debug' => Logger::DEBUG,
+        'info' => Logger::INFO,
+        'warn' => Logger::WARN,
+        'error' => Logger::ERROR
+      }.freeze
+
       def initialize(argv)
+        @interrupted = false
+        setup_signal_handlers
+        setup_logger
         Settings.configure(argv)
 
-        binding.pry
         run
+      rescue Interrupt
+        logger.info "\nDeployment interrupted by user"
+        cleanup_and_exit
       rescue StandardError => e
-        puts "Deployment failed: #{e.message}"
-        puts e.backtrace
+        logger.error "Deployment failed: #{e.message}"
+        logger.debug e.backtrace.join("\n") if ENV['DEBUG']
         exit 1
       end
 
+      def setup_signal_handlers
+        # Handle CTRL+C (SIGINT)
+        Signal.trap('INT') do
+          @interrupted = true
+          puts "\nReceived interrupt signal. Cleaning up..."
+          cleanup_and_exit
+        end
+
+        # Handle SIGTERM
+        Signal.trap('TERM') do
+          @interrupted = true
+          puts "\nReceived termination signal. Cleaning up..."
+          cleanup_and_exit
+        end
+      end
+
+      def cleanup_and_exit
+        puts 'Cleaning up...'
+        # Add any cleanup tasks here
+        exit 1
+      end
+
+      def check_interrupted
+        return unless @interrupted
+
+        puts 'Operation interrupted by user'
+        cleanup_and_exit
+      end
+
+      private
+
+      attr_reader :logger
+
+      def setup_logger
+        @logger = Logger.new($stdout)
+        @logger.formatter = proc do |severity, _, _, msg|
+          if severity == 'DEBUG'
+            "[#{severity}] #{msg}\n"
+          else
+            "#{msg}\n"
+          end
+        end
+
+        @logger.level = LOG_LEVELS[ENV.fetch('LOG_LEVEL', 'info').downcase] || Logger::INFO
+      end
+
+      def t(title)
+        logger.info "[#{title.upcase}]..."
+        start_time = Time.now
+        result = yield
+        duration = Time.now - start_time
+        logger.info " done #{'%.2f' % duration}s"
+        check_interrupted
+        result
+      rescue StandardError => e
+        puts " failed #{format('%.2f', (Time.now - start_time))}s"
+        raise
+      end
+
       def run
-        check_uncommit_changes
-        setup_server
+        t('Checking uncommitted changes') { check_uncommit_changes }
+        t('Setting up server') { setup_server }
 
         # Check if image exists and compose files are up to date
-        if verify_image(check_only: true)
-          puts "Image #{Settings.instance.image_tag} exists and compose files are up to date"
-          puts 'Proceeding with deployment...'
-          deploy
+        if t('Verifying existing image') { verify_image(check_only: true) }
+          logger.info "Image #{Settings.instance.image_tag} exists and compose files are up to date"
+          t('tag as production') { tag_as_production }
+          t('update compose files') { update_compose_files }
+          t('deploy compose files') { deploy_compose_files }
+          t('rotate release') { rotate_releases }
           return
         end
 
-        build
-        rotate_cache
-        update_compose_files
-        verify_image
-        deploy
+        t('Building image') { build }
+        t('Rotating cache') { rotate_cache }
+        t('Verifying image') { verify_image }
+        t('tag as production') { tag_as_production }
+        t('update compose files') { update_compose_files }
+        t('deploy compose files') { deploy_compose_files }
+        t('rotate release') { rotate_releases }
       end
 
       def check_uncommit_changes
-        puts 'Checking for uncommitted changes...'
         status = `git status --porcelain`.strip
-
         raise 'Uncommitted changes found. Commit first' unless status.empty?
       end
 
       def setup_server
-        puts 'Setting up server directory...'
         command = "mkdir -p #{Settings.instance.project_folder_path}"
         ssh_execute(command)
       end
 
       def build
-        p 'DEBUG: build_cmd'
-        puts build_cmd
-        if Settings[:dry_run]
-          puts "DRY RUN: #{build_cmd}"
-        else
-          system(build_cmd)
-        end
+        logger.debug "Building #{Settings.instance.image_tag} image and load to server"
+        system(build_cmd)
       end
 
       def rotate_cache
@@ -63,7 +132,7 @@ module Chagall
       end
 
       def verify_image(check_only: false)
-        puts 'Verifying image on server...'
+        logger.debug 'Verifying image on server...'
 
         check_cmd = "docker images --filter=reference=#{Settings.instance.image_tag} --format '{{.ID}}' | grep ."
 
@@ -72,7 +141,7 @@ module Chagall
         exists = !output.empty?
 
         if check_only
-          puts "Image #{exists ? 'found' : 'not found'}: #{Settings.instance.image_tag}"
+          logger.debug "Image #{exists ? 'found' : 'not found'}: #{Settings.instance.image_tag}"
           return exists
         end
 
@@ -95,7 +164,7 @@ module Chagall
       end
 
       def tag_as_production
-        puts "Tagging Docker #{Settings.instance.image_tag} image as production..."
+        logger.debug "Tagging Docker #{Settings.instance.image_tag} image as production..."
 
         command = "docker tag #{Settings.instance.image_tag} #{Settings[:name]}:production"
         ssh_execute(command) or raise 'Failed to tag Docker image'
@@ -131,7 +200,7 @@ module Chagall
       end
 
       def update_compose_files
-        puts 'Updating compose configuration files on remote server...'
+        logger.debug 'Updating compose configuration files on remote server...'
 
         Settings[:compose_files].each do |file|
           remote_destination = "#{Settings.instance.project_folder_path}/#{File.basename(file)}"
@@ -140,7 +209,7 @@ module Chagall
       end
 
       def deploy_compose_files
-        puts 'Updating compose services...'
+        logger.debug 'Updating compose services...'
         deploy_command = ['docker compose']
 
         # Use the remote file paths for docker compose command
@@ -155,23 +224,14 @@ module Chagall
       end
 
       def copy_file(local_file, remote_destination)
-        puts "Copying #{local_file} to #{Settings[:server]}:#{remote_destination}..."
+        logger.debug "Copying #{local_file} to #{Settings[:server]}:#{remote_destination}..."
         command = "scp #{local_file} #{Settings[:server]}:#{remote_destination}"
 
         system(command) or raise "Failed to copy #{local_file} to server"
       end
 
-      def deploy
-        tag_as_production
-        update_compose_files
-        deploy_compose_files
-        rotate_releases
-      end
-
       def rotate_releases
-        # Write file with name commmit sha to Settings.instance.project_folder_path/releases folder
-        # Cleanup old docker images
-        puts 'Rotating releases...'
+        logger.debug 'Rotating releases...'
         release_folder = "#{Settings.instance.project_folder_path}/releases"
         release_file = "#{release_folder}/#{Settings[:release]}"
 
@@ -186,6 +246,7 @@ module Chagall
         releases = `#{ssh_command(list_cmd)}`.strip.split("\n")
 
         # Keep only the last N releases
+        logger.info "releases #{releases.length}"
         return unless releases.length > Settings[:keep_releases]
 
         releases_to_remove = releases[Settings[:keep_releases]..-1]
@@ -196,7 +257,7 @@ module Chagall
 
           # Remove corresponding Docker image
           image = "#{Settings[:name]}:#{release}"
-          puts "Removing old Docker image: #{image}"
+          logger.info "Removing old Docker image: #{image}"
           ssh_execute("docker rmi #{image} || true") # Use || true to prevent failure if image is already removed
         end
       end
@@ -216,12 +277,23 @@ module Chagall
                     "ssh #{Settings[:ssh_args]} #{Settings[:server]} '#{command}'"
                   end
 
-        p "SSH: debug #{command}"
+        logger.debug "SSH: #{command}"
         if Settings[:dry_run] && !force
-          puts "DRY RUN: #{command}"
+          logger.info "DRY RUN: #{command}"
+          true
         else
-          system(command)
+          result = system(command)
+          raise "Command failed with exit code #{$?.exitstatus}: #{command}" unless result
+
+          result
         end
+      end
+
+      def system(*args)
+        result = super
+        raise "Command failed with exit code #{$?.exitstatus}: #{args.join(' ')}" unless result
+
+        result
       end
     end
   end
