@@ -7,6 +7,7 @@ module Chagall
       def initialize(argv)
         Settings.configure(argv)
 
+        binding.pry
         run
       rescue StandardError => e
         puts "Deployment failed: #{e.message}"

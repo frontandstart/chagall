@@ -46,7 +46,7 @@ module Chagall
         },
         {
           key: :remote,
-          flags: ['-r', '--remote'],
+          flags: ['-r', '--[no-]remote'],
           description: 'Deploy remotely (build on remote server)',
           type: :boolean,
           default: false,
@@ -118,12 +118,14 @@ module Chagall
         {
           key: :context,
           type: :string,
+          flags: ['--context'],
           env_name: 'CHAGALL_CONTEXT',
           default: '.'
         },
         {
           key: :platform,
           type: :string,
+          flags: ['-p', '--platform'],
           env_name: 'CHAGALL_PLATFORM',
           default: 'linux/x86_64'
         }
@@ -171,7 +173,7 @@ module Chagall
       end
 
       def parse_arguments
-        parser = OptionParser.new do |opts|
+        OptionParser.new do |opts|
           opts.banner = 'Usage: chagall deploy [options] [-- <docker build extra args>]'
           OPTIONS.each do |option|
             flags     = option[:flags]
@@ -191,7 +193,7 @@ module Chagall
               end
             end
           end
-        end
+        end.parse!(into: @options)
       end
 
       def validate_options
