@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'rspec'
-require_relative '../../../chagall/lib/chagall/deploy/settings'
+require_relative '../../../chagall/lib/chagall/settings'
 
 RSpec.describe Chagall::Deploy::Settings do
   before do

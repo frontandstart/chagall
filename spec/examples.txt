@@ -1,3 +1,8 @@
-example_id                               | status | run_time    |
----------------------------------------- | ------ | ----------- |
-./spec/integration/deploy_spec.rb[1:1:1] | failed | 1.7 seconds |
+example_id                                  | status | run_time        |
+------------------------------------------- | ------ | --------------- |
+./spec/chagall/deploy/main_spec.rb[1:1:1]   | failed | 0.00394 seconds |
+./spec/chagall/deploy/main_spec.rb[1:2:1:1] | failed | 0.00025 seconds |
+./spec/chagall/deploy/main_spec.rb[1:2:1:2] | failed | 0.00027 seconds |
+./spec/chagall/deploy/main_spec.rb[1:2:2:1] | failed | 0.00022 seconds |
+./spec/chagall/deploy/main_spec.rb[1:2:2:2] | failed | 0.00012 seconds |
+./spec/integration/deploy_spec.rb[1:1:1]    | failed | 1.7 seconds     |
