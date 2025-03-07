@@ -5,9 +5,7 @@ require_relative '../settings'
 module Chagall
   module Exec
     class Main
-      INTERACTIVE_COMMANDS = ['bash', 'sh', 'irb', 'bin/rails c', 'rails console', 'pry'].freeze
-
-      def initialize(argv)
+      def initialize(argv, container_run: false)
         @service_name = argv.shift
         @command = argv.join(' ')
 
@@ -17,25 +15,24 @@ module Chagall
         Chagall::Settings.configure(argv)
         @ssh = SSH.new(server: Chagall::Settings[:server], ssh_args: Chagall::Settings[:ssh_args])
 
-        # binding.pry
-        run
+        container_run ? run : exec
       end
 
       def run
-        project_path = Chagall::Settings.instance.project_folder_path
-        docker_compose_cmd = build_docker_compose_command
-
-        cmd = "cd #{project_path} && #{docker_compose_cmd} exec"
+        cmd = "cd #{Chagall::Settings.instance.project_folder_path} && #{build_docker_compose_command} run"
         cmd << " #{@service_name} #{@command}"
 
-        @ssh.execute(cmd, force: true, tty: true)
+        @ssh.execute(cmd, tty: true)
+      end
+
+      def exec
+        cmd = "cd #{Chagall::Settings.instance.project_folder_path} && #{build_docker_compose_command} exec"
+        cmd << " #{@service_name} #{@command}"
+
+        @ssh.execute(cmd, tty: true)
       end
 
       private
-
-      def interactive?
-        INTERACTIVE_COMMANDS.any? { |cmd| @command.start_with?(cmd) }
-      end
 
       def build_docker_compose_command
         compose_files = Chagall::Settings[:compose_files]

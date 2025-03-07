@@ -8,7 +8,7 @@ require_relative 'exec/main'
 
 module Chagall
   class Main
-    AVAILABLE_COMMANDS = %i[deploy rollback install exec].freeze
+    AVAILABLE_COMMANDS = %i[deploy rollback install exec run].freeze
 
     attr_accessor :chagall, :command
 
@@ -32,6 +32,8 @@ module Chagall
         @chagall = Setup::Main.new(argv)
       when :exec
         @chagall = Exec::Main.new(argv)
+      when :run
+        @chagall = Exec::Main.new(argv, container_run: true)
       end
 
       run_console if console

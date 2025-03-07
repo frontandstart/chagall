@@ -2,29 +2,27 @@ module Chagall
   class SSH
     attr_reader :server, :ssh_args
 
-    def initialize(server:, ssh_args: '-o StrictHostKeyChecking=no')
+    DEFAULT_SSH_ARGS = '-o StrictHostKeyChecking=no -o ServerAliveInterval=60'.freeze
+
+    def initialize(server:, ssh_args: DEFAULT_SSH_ARGS)
       @server = server
       @ssh_args = ssh_args
     end
 
-    def execute(command, directory: nil, force: false, tty: false)
+    def execute(command, directory: nil, tty: false)
       cmd = build_command(command, directory, tty)
       logger.debug "SSH: #{cmd}"
 
-      if force
-        if tty
-          # For interactive commands, replace current process
-          logger.debug 'Executing interactive command with TTY'
-          exec(cmd)
-        else
-          # For non-interactive commands, spawn new process and wait
-          result = system(cmd)
-          raise "Command failed with exit code #{$CHILD_STATUS.exitstatus}: #{cmd}" unless result
-
-          result
-        end
+      if tty
+        # For interactive commands, replace current process
+        logger.debug 'Executing interactive command with TTY'
+        exec(cmd)
       else
-        cmd
+        # For non-interactive commands, spawn new process and wait
+        result = system(cmd)
+        raise "Command failed with exit code #{$CHILD_STATUS.exitstatus}: #{cmd}" unless result
+
+        result
       end
     end
 
