@@ -1,3 +1,6 @@
+# frozen_string_literal: true
+
+require 'English'
 require_relative 'settings'
 require 'digest'
 require 'benchmark'
@@ -20,7 +23,25 @@ module Chagall
         setup_logger
         Settings.configure(argv)
 
-        run
+        Time.now
+
+        t('Checking uncommitted changes') { check_uncommit_changes }
+        t('Setting up server') { setup_server }
+
+        # Check if image exists and compose files are up to date
+        image_exists = t('Verifying existing image') { verify_image(check_only: true) }
+        unless image_exists
+          t('Building image') { build }
+          t('Rotating cache') { rotate_cache }
+          t('Verifying image') { verify_image }
+        end
+        logger.info "Image #{Settings.instance.image_tag} exists and compose files are up to date" if image_exists
+        t('tag as production') { tag_as_production }
+        t('update compose files') { update_compose_files }
+        t('deploy compose files') { deploy_compose_files }
+        t('rotate release') { rotate_releases }
+
+        print_total_time
       rescue Interrupt
         logger.info "\nDeployment interrupted by user"
         print_total_time
@@ -91,37 +112,11 @@ module Chagall
         logger.info " done #{'%.2f' % duration}s"
         check_interrupted
         result
-      rescue StandardError => e
+      rescue StandardError
         duration = Time.now - start_time
         @total_time += duration
         logger.error " failed #{format('%.2f', duration)}s"
         raise
-      end
-
-      def run
-        start_time = Time.now
-
-        t('Checking uncommitted changes') { check_uncommit_changes }
-        t('Setting up server') { setup_server }
-
-        # Check if image exists and compose files are up to date
-        if t('Verifying existing image') { verify_image(check_only: true) }
-          logger.info "Image #{Settings.instance.image_tag} exists and compose files are up to date"
-          t('tag as production') { tag_as_production }
-          t('update compose files') { update_compose_files }
-          t('deploy compose files') { deploy_compose_files }
-          t('rotate release') { rotate_releases }
-        else
-          t('Building image') { build }
-          t('Rotating cache') { rotate_cache }
-          t('Verifying image') { verify_image }
-          t('tag as production') { tag_as_production }
-          t('update compose files') { update_compose_files }
-          t('deploy compose files') { deploy_compose_files }
-          t('rotate release') { rotate_releases }
-        end
-
-        print_total_time
       end
 
       def check_uncommit_changes
@@ -262,7 +257,7 @@ module Chagall
         logger.info "releases #{releases.length}"
         return unless releases.length > Settings[:keep_releases]
 
-        releases_to_remove = releases[Settings[:keep_releases]..-1]
+        releases_to_remove = releases[Settings[:keep_releases]..]
 
         # Remove old release files
         releases_to_remove.each do |release|
@@ -296,7 +291,7 @@ module Chagall
           true
         else
           result = system(command)
-          raise "Command failed with exit code #{$?.exitstatus}: #{command}" unless result
+          raise "Command failed with exit code #{$CHILD_STATUS.exitstatus}: #{command}" unless result
 
           result
         end
@@ -304,7 +299,7 @@ module Chagall
 
       def system(*args)
         result = super
-        raise "Command failed with exit code #{$?.exitstatus}: #{args.join(' ')}" unless result
+        raise "Command failed with exit code #{$CHILD_STATUS.exitstatus}: #{args.join(' ')}" unless result
 
         result
       end

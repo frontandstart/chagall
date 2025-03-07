@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 require 'fileutils'
 require 'open3'
@@ -110,7 +112,7 @@ RSpec.describe 'Chagall Integration' do
 
   it 'generates all specified compose files' do
     # Run with production environment
-    setup_output, = Open3.capture2e(
+    Open3.capture2e(
       "#{Chagall::BIN_PATH} setup --env=production",
       chdir: test_dir
     )

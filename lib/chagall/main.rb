@@ -1,4 +1,6 @@
 #!/usr/bin/env ruby
+# frozen_string_literal: true
+
 require 'optparse'
 require 'pry'
 require_relative 'deploy/main'
@@ -34,7 +36,7 @@ module Chagall
       run_console if console
     end
 
-    def parse_arguments(argv)
+    def parse_arguments(_argv)
       OptionParser.new do |opts|
         opts.banner = "Usage: chagall #{command} [options]"
 
@@ -57,6 +59,8 @@ module Chagall
         puts '- chagall.verify_image  # Verify the Docker image'
         puts '- chagall.update_compose_files  # Update the compose files'
         puts '- chagall.deploy_compose_files  # Deploy the compose files'
+      when :run
+        puts '- chagall.run  # Execute the command in the service'
       end
       puts "- #{command.capitalize}::Settings.options  # View all settings"
       puts "\nNote: In dry-run mode, all commands are printed. To execute a command for real, pass force: true, e.g. chagall.build(force: true)."

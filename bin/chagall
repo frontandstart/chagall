@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# frozen_string_literal: true
 
 # # Prevent failures from being reported twice.
 # Thread.report_on_exception = false

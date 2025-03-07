@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'optparse'
 require 'yaml'
 require 'singleton'
@@ -7,8 +9,8 @@ module Chagall
     class Settings
       include Singleton
 
-      CHAGALL_PROJECTS_FOLDER = '~/projects'.freeze
-      TMP_CACHE_FOLDER = 'tmp'.freeze
+      CHAGALL_PROJECTS_FOLDER = '~/projects'
+      TMP_CACHE_FOLDER = 'tmp'
 
       OPTIONS = [
         {

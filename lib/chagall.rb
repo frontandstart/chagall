@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Chagall
   BIN_PATH = File.expand_path('../bin/chagall', __dir__)
 

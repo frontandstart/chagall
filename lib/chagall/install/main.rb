@@ -301,7 +301,7 @@ class Installer # rubocop:disable Metrics/ClassLength
   end
 end
 
-if __FILE__ == $0
+if __FILE__ == $PROGRAM_NAME
   options = {}
   OptionParser.new do |opts|
     opts.banner = 'Usage: install.rb [options]'
