@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 require 'English'
-require_relative 'settings'
+require_relative '../settings'
+require_relative '../ssh'
 require 'digest'
 require 'benchmark'
 require 'logger'
@@ -22,6 +23,7 @@ module Chagall
         setup_signal_handlers
         setup_logger
         Settings.configure(argv)
+        @ssh = SSH.new(server: Settings[:server], ssh_args: Settings[:ssh_args])
 
         Time.now
 
@@ -84,7 +86,7 @@ module Chagall
 
       private
 
-      attr_reader :logger, :total_time
+      attr_reader :logger, :total_time, :ssh
 
       def setup_logger
         @logger = Logger.new($stdout)
@@ -126,7 +128,7 @@ module Chagall
 
       def setup_server
         command = "mkdir -p #{Settings.instance.project_folder_path}"
-        ssh_execute(command)
+        ssh.execute(command, force: true)
       end
 
       def build
@@ -145,7 +147,7 @@ module Chagall
         check_cmd = "docker images --filter=reference=#{Settings.instance.image_tag} --format '{{.ID}}' | grep ."
 
         # Use backticks to capture output instead of system
-        output = `#{ssh_command(check_cmd)} 2>/dev/null`.strip
+        output = `#{ssh.command(check_cmd)} 2>/dev/null`.strip
         exists = !output.empty?
 
         if check_only
@@ -166,7 +168,7 @@ module Chagall
           local_md5 = ::Digest::MD5.file(file).hexdigest
 
           check_cmd = "md5sum #{remote_file} 2>/dev/null | cut -d' ' -f1"
-          remote_md5 = `#{ssh_command(check_cmd)}`.strip
+          remote_md5 = `#{ssh.command(check_cmd)}`.strip
           local_md5 == remote_md5
         end
       end
@@ -175,7 +177,7 @@ module Chagall
         logger.debug "Tagging Docker #{Settings.instance.image_tag} image as production..."
 
         command = "docker tag #{Settings.instance.image_tag} #{Settings[:name]}:production"
-        ssh_execute(command) or raise 'Failed to tag Docker image'
+        ssh.execute(command, force: true) or raise 'Failed to tag Docker image'
       end
 
       def build_cmd
@@ -201,9 +203,9 @@ module Chagall
 
         cmd =  "docker build \\\n#{args}"
         if Settings[:remote]
-          ssh_command(cmd)
+          ssh.command(cmd)
         else
-          "#{cmd} | #{ssh_command('docker load')}"
+          "#{cmd} | #{ssh.command('docker load')}"
         end
       end
 
@@ -221,14 +223,14 @@ module Chagall
         deploy_command = ['docker compose']
 
         # Use the remote file paths for docker compose command
-
         Settings[:compose_files].each do |file|
           deploy_command << "-f #{File.basename(file)}"
         end
         deploy_command << 'up -d'
 
-        ssh_execute(deploy_command.join(' '),
-                    directory: Settings.instance.project_folder_path) or raise 'Failed to update compose services'
+        ssh.execute(deploy_command.join(' '),
+                    directory: Settings.instance.project_folder_path,
+                    force: true) or raise 'Failed to update compose services'
       end
 
       def copy_file(local_file, remote_destination)
@@ -244,14 +246,14 @@ module Chagall
         release_file = "#{release_folder}/#{Settings[:release]}"
 
         # Create releases directory if it doesn't exist
-        ssh_execute("mkdir -p #{release_folder}")
+        ssh.execute("mkdir -p #{release_folder}", force: true)
 
         # Save current release
-        ssh_execute("touch #{release_file}")
+        ssh.execute("touch #{release_file}", force: true)
 
         # Get list of releases sorted by modification time (newest first)
         list_cmd = "ls -t #{release_folder}"
-        releases = `#{ssh_command(list_cmd)}`.strip.split("\n")
+        releases = `#{ssh.command(list_cmd)}`.strip.split("\n")
 
         # Keep only the last N releases
         logger.info "releases #{releases.length}"
@@ -261,39 +263,12 @@ module Chagall
 
         # Remove old release files
         releases_to_remove.each do |release|
-          ssh_execute("rm #{release_folder}/#{release}")
+          ssh.execute("rm #{release_folder}/#{release}", force: true)
 
           # Remove corresponding Docker image
           image = "#{Settings[:name]}:#{release}"
           logger.info "Removing old Docker image: #{image}"
-          ssh_execute("docker rmi #{image} || true") # Use || true to prevent failure if image is already removed
-        end
-      end
-
-      def ssh_command(command, directory: nil)
-        if directory
-          "ssh #{Settings[:ssh_args]} #{Settings[:server]} 'cd #{directory} && #{command}'"
-        else
-          "ssh #{Settings[:ssh_args]} #{Settings[:server]} '#{command}'"
-        end
-      end
-
-      def ssh_execute(command, directory: nil, force: false)
-        command = if directory
-                    "ssh #{Settings[:ssh_args]} #{Settings[:server]} 'cd #{directory} && #{command}'"
-                  else
-                    "ssh #{Settings[:ssh_args]} #{Settings[:server]} '#{command}'"
-                  end
-
-        logger.debug "SSH: #{command}"
-        if Settings[:dry_run] && !force
-          logger.info "DRY RUN: #{command}"
-          true
-        else
-          result = system(command)
-          raise "Command failed with exit code #{$CHILD_STATUS.exitstatus}: #{command}" unless result
-
-          result
+          ssh.execute("docker rmi #{image} || true", force: true) # Use || true to prevent failure if image is already removed
         end
       end
 

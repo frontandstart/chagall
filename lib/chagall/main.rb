@@ -4,12 +4,11 @@
 require 'optparse'
 require 'pry'
 require_relative 'deploy/main'
-# require_relative 'rollback/main'
-# require_relative 'setup/main'
+require_relative 'exec/main'
 
 module Chagall
   class Main
-    AVAILABLE_COMMANDS = %i[deploy rollback install].freeze
+    AVAILABLE_COMMANDS = %i[deploy rollback install exec].freeze
 
     attr_accessor :chagall, :command
 
@@ -31,6 +30,8 @@ module Chagall
         @chagall = Rollback::Main.new(argv)
       when :setup
         @chagall = Setup::Main.new(argv)
+      when :exec
+        @chagall = Exec::Main.new(argv)
       end
 
       run_console if console
@@ -59,7 +60,7 @@ module Chagall
         puts '- chagall.verify_image  # Verify the Docker image'
         puts '- chagall.update_compose_files  # Update the compose files'
         puts '- chagall.deploy_compose_files  # Deploy the compose files'
-      when :run
+      when :exec
         puts '- chagall.run  # Execute the command in the service'
       end
       puts "- #{command.capitalize}::Settings.options  # View all settings"
