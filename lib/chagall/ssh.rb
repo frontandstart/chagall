@@ -7,32 +7,46 @@ module Chagall
       @ssh_args = ssh_args
     end
 
-    def execute(command, directory: nil, force: false)
-      cmd = build_command(command, directory)
+    def execute(command, directory: nil, force: false, tty: false)
+      cmd = build_command(command, directory, tty)
       logger.debug "SSH: #{cmd}"
 
       if force
-        result = system(cmd)
-        raise "Command failed with exit code #{$CHILD_STATUS.exitstatus}: #{cmd}" unless result
+        if tty
+          # For interactive commands, replace current process
+          logger.debug 'Executing interactive command with TTY'
+          exec(cmd)
+        else
+          # For non-interactive commands, spawn new process and wait
+          result = system(cmd)
+          raise "Command failed with exit code #{$CHILD_STATUS.exitstatus}: #{cmd}" unless result
 
-        result
+          result
+        end
       else
         cmd
       end
     end
 
-    def command(command, directory: nil)
-      build_command(command, directory)
+    def command(command, directory: nil, tty: false)
+      build_command(command, directory, tty)
     end
 
     private
 
-    def build_command(command, directory)
-      if directory
-        "ssh #{ssh_args} #{server} 'cd #{directory} && #{command}'"
-      else
-        "ssh #{ssh_args} #{server} '#{command}'"
-      end
+    def build_command(command, directory, tty)
+      ssh_cmd = ['ssh']
+      ssh_cmd << '-t' if tty
+      ssh_cmd << ssh_args
+      ssh_cmd << server
+
+      cmd = if directory
+              "cd #{directory} && #{command}"
+            else
+              command
+            end
+
+      "#{ssh_cmd.join(' ')} '#{cmd}'"
     end
 
     def logger
