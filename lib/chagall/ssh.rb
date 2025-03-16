@@ -56,7 +56,7 @@ module Chagall
             "#{msg}\n"
           end
         end
-        l.level = Logger::INFO
+        l.level = ENV.fetch('LOG_LEVEL') { 'debug' }.downcase == 'debug' ? Logger::DEBUG : Logger::INFO
       end
     end
   end

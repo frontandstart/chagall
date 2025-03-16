@@ -6,6 +6,7 @@ require_relative '../ssh'
 require 'digest'
 require 'benchmark'
 require 'logger'
+require_relative './setup_server'
 
 module Chagall
   module Deploy
@@ -27,17 +28,9 @@ module Chagall
 
         Time.now
 
-        t('Checking uncommitted changes') { check_uncommit_changes }
+        t('Checking uncommitted changes') { check_uncommit_changes } unless Settings[:skip_uncommit_check]
         t('Setting up server') { setup_server }
-
-        # Check if image exists and compose files are up to date
-        image_exists = t('Verifying existing image') { verify_image(check_only: true) }
-        unless image_exists
-          t('Building image') { build }
-          t('Rotating cache') { rotate_cache }
-          t('Verifying image') { verify_image }
-        end
-        logger.info "Image #{Settings.instance.image_tag} exists and compose files are up to date" if image_exists
+        t('Check image or build') { check_image_or_build }
         t('tag as production') { tag_as_production }
         t('update compose files') { update_compose_files }
         t('deploy compose files') { deploy_compose_files }
@@ -53,6 +46,19 @@ module Chagall
         logger.debug e.backtrace.join("\n") if ENV['DEBUG']
         print_total_time
         exit 1
+      end
+
+      def check_image_or_build
+        image_exists = verify_image(check_only: true)
+
+        if image_exists
+          logger.info "Image #{Settings.instance.image_tag} exists and compose files are up to date"
+          return
+        end
+
+        t('Building image') { build }
+        t('Rotating cache') { rotate_cache }
+        t('Verifying image') { verify_image }
       end
 
       def setup_signal_handlers
@@ -98,7 +104,7 @@ module Chagall
           end
         end
 
-        @logger.level = LOG_LEVELS[ENV.fetch('LOG_LEVEL', 'info').downcase] || Logger::INFO
+        @logger.level = LOG_LEVELS[ENV.fetch('LOG_LEVEL', 'debug').downcase] || Logger::DEBUG
       end
 
       def print_total_time
@@ -127,8 +133,7 @@ module Chagall
       end
 
       def setup_server
-        command = "mkdir -p #{Settings.instance.project_folder_path}"
-        ssh.execute(command, force: true)
+        SetupServer.new(ssh, logger).setup
       end
 
       def build
@@ -177,7 +182,7 @@ module Chagall
         logger.debug "Tagging Docker #{Settings.instance.image_tag} image as production..."
 
         command = "docker tag #{Settings.instance.image_tag} #{Settings[:name]}:production"
-        ssh.execute(command, force: true) or raise 'Failed to tag Docker image'
+        ssh.execute(command) or raise 'Failed to tag Docker image'
       end
 
       def build_cmd
@@ -229,8 +234,7 @@ module Chagall
         deploy_command << 'up -d'
 
         ssh.execute(deploy_command.join(' '),
-                    directory: Settings.instance.project_folder_path,
-                    force: true) or raise 'Failed to update compose services'
+                    directory: Settings.instance.project_folder_path) or raise 'Failed to update compose services'
       end
 
       def copy_file(local_file, remote_destination)
@@ -246,10 +250,10 @@ module Chagall
         release_file = "#{release_folder}/#{Settings[:release]}"
 
         # Create releases directory if it doesn't exist
-        ssh.execute("mkdir -p #{release_folder}", force: true)
+        ssh.execute("mkdir -p #{release_folder}")
 
         # Save current release
-        ssh.execute("touch #{release_file}", force: true)
+        ssh.execute("touch #{release_file}")
 
         # Get list of releases sorted by modification time (newest first)
         list_cmd = "ls -t #{release_folder}"
@@ -263,12 +267,12 @@ module Chagall
 
         # Remove old release files
         releases_to_remove.each do |release|
-          ssh.execute("rm #{release_folder}/#{release}", force: true)
+          ssh.execute("rm #{release_folder}/#{release}")
 
           # Remove corresponding Docker image
           image = "#{Settings[:name]}:#{release}"
           logger.info "Removing old Docker image: #{image}"
-          ssh.execute("docker rmi #{image} || true", force: true) # Use || true to prevent failure if image is already removed
+          ssh.execute("docker rmi #{image} || true") # Use || true to prevent failure if image is already removed
         end
       end
 

@@ -13,6 +13,13 @@ module Chagall
 
     OPTIONS = [
       {
+        key: :skip_uncommit_check,
+        flags: ['--skip-uncommit-check'],
+        description: 'Skip uncommitted changes check',
+        type: :boolean,
+        default: false
+      },
+      {
         key: :server,
         flags: ['-s', '--server'],
         description: 'Server to deploy to',

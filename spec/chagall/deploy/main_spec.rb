@@ -8,8 +8,8 @@ RSpec.describe Chagall::Deploy::Main do
   let(:dummy_argv) { ['--dry-run', '--server', 'localhost', '-', ''] }
   subject { described_class.new(dummy_argv) }
   let(:main_instance) { subject }
-  let(:run_id) { UuidTools::UUID.timestamp_create.to_s }
   let(:tag) { SecureRandom.hex(4) }
+  let(:run_id) { "#{Time.now.strftime('%Y%m%d%H%M%S')}-#{tag}" }
 
   before do
     allow(Chagall::Settings).to receive(:[]).and_call_original
@@ -56,7 +56,7 @@ RSpec.describe Chagall::Deploy::Main do
 
       it 'prints DRY RUN message and returns true for non-remote command' do
         output = capture_stdout do
-          res = main_instance.send(:execute, command, remote: false, force: false)
+          res = main_instance.send(:execute, command, remote: false)
           expect(res).to eq(true)
         end
         expect(output).to include('DRY RUN:')
@@ -65,7 +65,7 @@ RSpec.describe Chagall::Deploy::Main do
 
       it 'prints DRY RUN message and returns true for remote command' do
         output = capture_stdout do
-          res = main_instance.send(:execute, command, remote: true, force: false)
+          res = main_instance.send(:execute, command, remote: true)
           expect(res).to eq(true)
         end
         expect(output).to include('DRY RUN:')
@@ -81,13 +81,13 @@ RSpec.describe Chagall::Deploy::Main do
       end
 
       it 'executes non-remote command' do
-        res = main_instance.send(:execute, command, remote: false, force: true)
+        res = main_instance.send(:execute, command, remote: false)
         expect(res).to eq(true)
         expect(main_instance).to have_received(:system).with(command)
       end
 
       it 'executes remote command' do
-        res = main_instance.send(:execute, command, remote: true, force: true)
+        res = main_instance.send(:execute, command, remote: true)
         expect(res).to eq(true)
         expect(main_instance).to have_received(:ssh_execute).with(command)
       end
