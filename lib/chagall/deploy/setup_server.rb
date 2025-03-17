@@ -17,7 +17,7 @@ module Chagall
       def setup
         install_docker unless docker_installed?
         create_project_folder unless project_folder_exists?
-        create_env_files
+        touch_env_files
 
         logger.info 'Setting up Docker environment...'
       end
@@ -26,12 +26,12 @@ module Chagall
 
       attr_reader :ssh, :logger
 
-      def create_env_files
+      def touch_env_files
         logger.debug 'Create env files described at services...'
 
         Settings[:compose_files].each do |file|
-          yaml_file = YAML.load_file(file, aliases: true)
-          yaml_file['services'].each do |service|
+          yaml = YAML.load_file(file, aliases: true)
+          yaml['services'].each do |service|
             service[1]['env_file']&.each do |env_file|
               ssh.execute("touch #{env_file}", directory: Settings.instance.project_folder_path)
             end
@@ -58,7 +58,7 @@ module Chagall
           logger.debug "Docker Compose output: '#{compose_output}'"
 
           if docker_output.include?('Docker version') && compose_output.include?('Docker Compose version')
-            logger.debug 'Docker and Docker Compose are properly installed'
+            logger.debug 'Docker and docker compose installed'
             return true
           end
 
