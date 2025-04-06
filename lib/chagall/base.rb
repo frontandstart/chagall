@@ -1,6 +1,6 @@
 module Chagall
   class Base
-    attr_accessor :logger, :ssh
+    attr_reader :logger, :ssh
 
     def initialize
       @logger = Logger.new($stdout)

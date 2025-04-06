@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'optparse'
 require 'yaml'
 require 'singleton'
 
@@ -146,10 +145,6 @@ module Chagall
         instance.configure(argv)
       end
 
-      def options
-        instance.options
-      end
-
       def [](key)
         instance.options[key]
       end
@@ -182,7 +177,7 @@ module Chagall
 
     def parse_arguments
       OptionParser.new do |opts|
-        opts.banner = 'Usage: chagall deploy [options] [-- <docker build extra args>]'
+        opts.banner = 'Usage: chagall [options] <command> [args]'
         OPTIONS.each do |option|
           flags     = option[:flags]
           desc      = option[:description]

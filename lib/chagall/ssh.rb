@@ -4,7 +4,7 @@ module Chagall
 
     DEFAULT_SSH_ARGS = '-o StrictHostKeyChecking=no -o ServerAliveInterval=60'.freeze
 
-    def initialize(server:, ssh_args: DEFAULT_SSH_ARGS)
+    def initialize(server: Settings.instance.options[:server], ssh_args: DEFAULT_SSH_ARGS)
       @server = server
       @ssh_args = ssh_args
     end

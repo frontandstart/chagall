@@ -11,8 +11,6 @@ module Chagall
         @service_name = argv.shift
         @arguments = argv.join(' ')
 
-        Chagall::Settings.configure(argv)
-
         raise Chagall::Error, 'Service name is required' if @service_name.nil? || @service_name.empty?
         raise Chagall::Error, 'Command is required' if @command.nil? || @command.empty?
 

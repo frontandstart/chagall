@@ -11,6 +11,7 @@ module Chagall
 
       def initialize
         super
+        setup
       end
 
       def setup
@@ -22,8 +23,6 @@ module Chagall
       end
 
       private
-
-      attr_reader :ssh, :logger
 
       def touch_env_files
         logger.debug 'Create env files described at services...'
@@ -87,23 +86,13 @@ module Chagall
       def install_docker
         logger.debug 'Installing Docker...'
 
-        commands = [
-          'sh',
-          '-c',
-          "'curl -fsSL https://get.docker.com || wget -O - https://get.docker.com || echo \"exit 1\"'",
-          '|',
-          'sh'
-        ]
-
+        command = 'curl -fsSL https://get.docker.com || wget -O - https://get.docker.com | sh'
         # Clear any existing sudo session
         ssh.execute('sudo -k')
 
-        commands.each do |cmd|
-          logger.debug "Executing: #{cmd}"
-          # Use -t to force pseudo-terminal allocation for sudo password prompt
-          result = ssh.execute(cmd, tty: true)
-          raise DockerSetupError, "Failed to execute: #{cmd}" unless result
-        end
+        logger.debug "Executing: #{command}"
+        result = ssh.execute(command, tty: true)
+        raise DockerSetupError, "Failed to execute: #{command}" unless result
       rescue StandardError => e
         logger.error "Docker installation failed: #{e.message}"
         raise DockerSetupError, "Failed to install Docker: #{e.message}"

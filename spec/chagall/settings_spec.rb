@@ -1,56 +1,61 @@
 # frozen_string_literal: true
 
 require 'rspec'
-require_relative '../../../chagall/lib/chagall/settings'
+require_relative '../../lib/chagall/settings'
 
-RSpec.describe Chagall::Deploy::Settings do
+RSpec.describe Chagall::Settings do
   before do
     # Reset the singleton instance for testing
-    Chagall::Deploy::Settings.__send__(:instance_variable_set, :@instance, nil)
+    Chagall::Settings.__send__(:instance_variable_set, :@instance, nil)
+    # Stub File.exist? to always return true to bypass compose file validation
+    allow(File).to receive(:exist?).and_return(true)
   end
 
   describe '#configure' do
-    let(:argv) { ['-s', 'user@server', '-n', 'myproject', '-f', 'compose.prod.yaml', 'ARG1', 'ARG2'] }
-    subject(:settings) { Chagall::Deploy::Settings.new.configure(argv) }
+    let(:argv) { ['-s', 'user@server', '-n', 'myproject', '-c', 'compose.prod.yaml'] }
+    subject(:settings) { Chagall::Settings.configure(argv) }
 
     it 'parses required options correctly' do
       expect(settings.options[:server]).to eq('user@server')
       expect(settings.options[:name]).to eq('myproject')
       expect(settings.options[:compose_files]).to eq(['compose.prod.yaml'])
     end
+  end
 
-    it 'captures extra arguments as build_args' do
-      expect(settings.options[:build_args]).to eq('ARG1 ARG2')
+  describe 'dot notation access' do
+    let(:argv) { ['-s', 'user@server', '-n', 'myproject', '-c', 'compose.prod.yaml'] }
+    before { Chagall::Settings.configure(argv) }
+
+    it 'allows direct access to options via dot notation on instance' do
+      instance = Chagall::Settings.instance
+      expect(instance.options.server).to eq('user@server')
+      expect(instance.options.name).to eq('myproject')
+      expect(instance.options.compose_files).to eq(['compose.prod.yaml'])
+    end
+
+    it 'allows direct access to options via dot notation on class' do
+      expect(Chagall::Settings.server).to eq('user@server')
+      expect(Chagall::Settings.name).to eq('myproject')
+      expect(Chagall::Settings.compose_files).to eq(['compose.prod.yaml'])
+    end
+
+    it 'maintains backward compatibility with hash notation' do
+      expect(Chagall::Settings[:server]).to eq('user@server')
+      expect(Chagall::Settings[:name]).to eq('myproject')
+      expect(Chagall::Settings[:compose_files]).to eq(['compose.prod.yaml'])
     end
   end
 
-  let(:required_args) { ['--server', 'someserver', '--name', 'testproject', '--dry-run'] }
+  describe 'custom methods using dot notation' do
+    let(:argv) { ['-s', 'user@server', '-n', 'myproject', '-c', 'compose.prod.yaml'] }
+    before { Chagall::Settings.configure(argv) }
 
-  before do
-    # Reset singleton state for isolation
-    settings = described_class.instance
-    settings.options = {}
-    settings.missing_options = []
-    settings.missing_compose_files = []
-    # Stub File.exist? to always return true to bypass compose file validation
-    allow(File).to receive(:exist?).and_return(true)
-  end
-
-  context 'when additional docker build arguments are provided' do
-    it 'collects unknown arguments into build_args' do
-      args = required_args + ['--cache-from', '/tmp']
-      settings = described_class.instance.configure(args.dup)
-      expect(settings.options[:server]).to eq('someserver')
-      expect(settings.options[:name]).to eq('testproject')
-      expect(settings.options[:build_args]).to include('--cache-from /tmp')
+    it 'uses dot notation in image_tag method' do
+      expect(Chagall::Settings.instance.image_tag).to eq("myproject:#{`git rev-parse --short HEAD`.strip}")
     end
-  end
 
-  context 'when an unknown boolean flag is provided' do
-    it 'includes the flag in build_args' do
-      args = required_args + ['--some-flag']
-      settings = described_class.instance.configure(args.dup)
-      expect(settings.options[:build_args]).to include('--some-flag')
+    it 'uses dot notation in project_folder_path method' do
+      expect(Chagall::Settings.instance.project_folder_path).to eq("#{Chagall::Settings::CHAGALL_PROJECTS_FOLDER}/myproject")
     end
   end
 end
