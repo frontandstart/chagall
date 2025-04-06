@@ -4,14 +4,13 @@ require 'yaml'
 require 'io/console'
 
 module Chagall
-  module Deploy
+  module Setup
     # Handles server provisioning and Docker environment setup for deployment
-    class SetupServer
+    class Main < Base
       class DockerSetupError < StandardError; end
 
-      def initialize(ssh, logger)
-        @ssh = ssh
-        @logger = logger
+      def initialize
+        super
       end
 
       def setup
@@ -89,10 +88,11 @@ module Chagall
         logger.debug 'Installing Docker...'
 
         commands = [
-          'sudo apt-get update'
-          # 'curl -fsSL https://get.docker.com',
-          # 'apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin',
-          # 'usermod -aG docker $USER'
+          'sh',
+          '-c',
+          "'curl -fsSL https://get.docker.com || wget -O - https://get.docker.com || echo \"exit 1\"'",
+          '|',
+          'sh'
         ]
 
         # Clear any existing sudo session

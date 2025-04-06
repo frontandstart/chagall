@@ -1,5 +1,7 @@
 # Chagall Deploy
 
+## Project under active development
+
 **Chagall Deploy** is a streamlined deployment tool for Rails applications, optimized for development and production single-server setups. 
 
 - It generates Docker configurations based on your application’s dependencies
@@ -31,6 +33,21 @@ curl -sSL https://github.com/frontandstart/chagall-deploy/install.sh | bash
 
 ## Usage
 
+Generate compose and compose.prod.yaml
+```bash
+bin/chagall install
+```
+
+Setup server for deploy:
+  - install docker
+  - install reproxy(optional can be part of compose.prod.yaml) for signe compose per server deployments
+```bash
+bin/chagall setup
+```
+
+Deploy application
+  - Build image
+  - Trigger compose project update
 ```bash
 bin/chagall deploy
 ```

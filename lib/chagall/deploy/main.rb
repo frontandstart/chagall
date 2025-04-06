@@ -6,7 +6,7 @@ require_relative '../ssh'
 require 'digest'
 require 'benchmark'
 require 'logger'
-require_relative './setup_server'
+require 'yaml'
 
 module Chagall
   module Deploy
@@ -23,13 +23,12 @@ module Chagall
         @total_time = 0.0
         setup_signal_handlers
         setup_logger
-        Settings.configure(argv)
+
         @ssh = SSH.new(server: Settings[:server], ssh_args: Settings[:ssh_args])
 
         Time.now
 
         t('Checking uncommitted changes') { check_uncommit_changes } unless Settings[:skip_uncommit_check]
-        t('Setting up server') { setup_server }
         t('Check image or build') { check_image_or_build }
         t('tag as production') { tag_as_production }
         t('update compose files') { update_compose_files }

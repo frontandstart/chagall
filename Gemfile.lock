@@ -1,7 +1,8 @@
 PATH
   remote: .
   specs:
-    chagall (0.0.1.beta)
+    chagall (0.1.0)
+      gli
       pry
       zeitwerk (~> 2.5)
 
@@ -36,6 +37,8 @@ GEM
       rexml
     diff-lcs (1.6.0)
     drb (2.2.1)
+    gli (2.22.2)
+      ostruct
     hashdiff (1.1.1)
     i18n (1.14.7)
       concurrent-ruby (~> 1.0)
@@ -44,6 +47,7 @@ GEM
     logger (1.6.5)
     method_source (1.1.0)
     minitest (5.25.4)
+    ostruct (0.6.1)
     parallel (1.26.3)
     parser (3.3.7.1)
       ast (~> 2.4.1)

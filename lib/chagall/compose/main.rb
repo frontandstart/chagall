@@ -3,18 +3,18 @@ require_relative '../ssh'
 require_relative '../settings'
 
 module Chagall
-  module Exec
-    class Main
-      def initialize(command, argv, container_run: false)
-        @service_name = argv.shift
+  module Compose
+    # Build and execute command usign docker compose on server
+    class Main < Base
+      def initialize(command, argv)
         @command = command
+        @service_name = argv.shift
         @arguments = argv.join(' ')
+
+        Chagall::Settings.configure(argv)
 
         raise Chagall::Error, 'Service name is required' if @service_name.nil? || @service_name.empty?
         raise Chagall::Error, 'Command is required' if @command.nil? || @command.empty?
-
-        Chagall::Settings.configure(argv)
-        @ssh = SSH.new(server: Chagall::Settings[:server], ssh_args: Chagall::Settings[:ssh_args])
 
         run_command
       end

@@ -110,6 +110,8 @@ class Installer # rubocop:disable Metrics/ClassLength
   def initialize(options = {})
     raise 'Gemfile not found' unless File.exist?('Gemfile')
 
+    Chagall::Settings.configure(argv)
+
     @app_name = options[:app_name] || File.basename(Dir.pwd)
     @services = []
     @logger = Logger.new($stdout)
