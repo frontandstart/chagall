@@ -11,20 +11,22 @@ module Chagall
 
       def initialize
         super
-        setup
+        binding.pry if Chagall::Settings[:debug]
+        setup unless Chagall::Settings[:dry_run]
       end
 
       def setup
         install_docker unless docker_installed?
+        setup_non_root_docker_deamon_access if unable_to_access_docker_deamon?
         create_project_folder unless project_folder_exists?
-        touch_env_files
+        create_env_files
 
         logger.info 'Setting up Docker environment...'
       end
 
       private
 
-      def touch_env_files
+      def create_env_files
         logger.debug 'Create env files described at services...'
 
         Settings[:compose_files].each do |file|
@@ -37,38 +39,59 @@ module Chagall
         end
       end
 
+      def unable_to_access_docker_deamon?
+        docker_result = ssh.command('docker ps')
+        docker_output = `#{docker_result} 2>&1`.strip
+        logger.debug "Docker output: #{docker_output}"
+        docker_output.downcase.include?('permission denied') ||
+          docker_output.downcase.include?('connect: permission denied')
+      end
+
+      def setup_non_root_docker_deamon_access
+        logger.debug 'Setting up non-root Docker daemon access...'
+
+        username = `#{ssh.command('whoami')} 2>&1`.strip
+        logger.debug "Username: #{username}"
+
+        return true if username == 'root'
+
+        groups = `#{ssh.command('groups')} 2>&1`.strip
+        return logger.debug 'User is already in docker group' if groups.include?('docker')
+
+        logger.debug "Adding user #{username} to docker group"
+        ssh.execute("sudo usermod -aG docker #{username}", tty: true)
+
+        new_groups = `#{ssh.command('groups')} 2>&1`.strip
+        return logger.debug 'Successfully added user to docker group' if new_groups.include?('docker')
+
+        logger.error 'Failed to add user to docker group'
+        false
+      rescue StandardError => e
+        logger.error "Error setting up Docker daemon access: #{e.message}"
+        logger.debug e.backtrace.join("\n")
+        false
+      end
+
       def docker_installed?
         logger.debug 'Checking Docker installation...'
 
-        begin
-          # Check docker binary with full command output
-          docker_cmd = 'docker --version'
-          docker_result = ssh.command(docker_cmd)
-          docker_output = `#{docker_result} 2>&1`.strip
-          logger.debug "Docker command: #{docker_cmd}"
-          logger.debug "Docker version output: '#{docker_output}'"
+        docker_output = `#{ssh.command('docker --version')} 2>&1`.strip
+        logger.debug "Docker version output: '#{docker_output}'"
 
-          # Check docker compose
-          compose_cmd = 'docker compose version'
-          compose_result = ssh.command(compose_cmd)
-          compose_output = `#{compose_result} 2>&1`.strip
-          logger.debug "Docker Compose command: #{compose_cmd}"
-          logger.debug "Docker Compose output: '#{compose_output}'"
+        compose_output = `#{ssh.command('docker compose version')} 2>&1`.strip
+        logger.debug "Docker Compose output: '#{compose_output}'"
 
-          if docker_output.include?('Docker version') && compose_output.include?('Docker Compose version')
-            logger.debug 'Docker and docker compose installed'
-            return true
-          end
+        return true if docker_output.include?('Docker version') &&
+                       compose_output.include?('Docker Compose version')
 
-          logger.warn 'Docker check failed:'
-          logger.warn "Docker output: #{docker_output}"
-          logger.warn "Docker Compose output: #{compose_output}"
-          false
-        rescue StandardError => e
-          logger.error "Error checking Docker installation: #{e.message}"
-          logger.debug e.backtrace.join("\n")
-          false
-        end
+        logger.warn 'Docker check failed:'
+        logger.warn "Docker output: #{docker_output}"
+        logger.warn "Docker Compose output: #{compose_output}"
+        false
+      rescue StandardError => e
+        logger.error "Error checking Docker installation: #{e.message}"
+        logger.debug e.backtrace.join("\n")
+        false
       end
 
       def project_folder_exists?
@@ -86,7 +109,7 @@ module Chagall
       def install_docker
         logger.debug 'Installing Docker...'
 
-        command = 'curl -fsSL https://get.docker.com || wget -O - https://get.docker.com | sh'
+        command = '(curl -fsSL https://get.docker.com || wget -O - https://get.docker.com || echo "exit 1") | sh'
         # Clear any existing sudo session
         ssh.execute('sudo -k')
 

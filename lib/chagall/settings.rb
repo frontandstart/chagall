@@ -12,6 +12,13 @@ module Chagall
 
     OPTIONS = [
       {
+        key: :debug,
+        flags: ['--debug'],
+        description: 'Debug mode with pry attaching',
+        type: :boolean,
+        default: false
+      },
+      {
         key: :skip_uncommit_check,
         flags: ['--skip-uncommit-check'],
         description: 'Skip uncommitted changes check',
