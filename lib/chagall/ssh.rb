@@ -12,18 +12,8 @@ module Chagall
     def execute(command, directory: nil, tty: false)
       cmd = build_command(command, directory, tty)
       logger.debug "SSH: #{cmd}"
-
-      if tty
-        # For interactive commands, replace current process
-        logger.debug 'Executing interactive command with TTY'
-        exec(cmd)
-      else
-        # For non-interactive commands, spawn new process and wait
-        result = system(cmd)
-        raise "Command failed with exit code #{$CHILD_STATUS.exitstatus}: #{cmd}" unless result
-
-        result
-      end
+      system(cmd)
+      $CHILD_STATUS.success?
     end
 
     def command(command, directory: nil, tty: false)

@@ -11,8 +11,7 @@ module Chagall
 
       def initialize
         super
-        binding.pry if Chagall::Settings[:debug]
-        setup unless Chagall::Settings[:dry_run]
+        setup
       end
 
       def setup
@@ -21,7 +20,7 @@ module Chagall
         create_project_folder unless project_folder_exists?
         create_env_files
 
-        logger.info 'Setting up Docker environment...'
+        logger.info 'Docker environment setup complete'
       end
 
       private
@@ -40,6 +39,7 @@ module Chagall
       end
 
       def unable_to_access_docker_deamon?
+        return true
         docker_result = ssh.command('docker ps')
         docker_output = `#{docker_result} 2>&1`.strip
         logger.debug "Docker output: #{docker_output}"
@@ -48,24 +48,20 @@ module Chagall
       end
 
       def setup_non_root_docker_deamon_access
-        logger.debug 'Setting up non-root Docker daemon access...'
+        logger.info 'Add user to docker group...'
 
         username = `#{ssh.command('whoami')} 2>&1`.strip
-        logger.debug "Username: #{username}"
-
         return true if username == 'root'
 
         groups = `#{ssh.command('groups')} 2>&1`.strip
-        return logger.debug 'User is already in docker group' if groups.include?('docker')
+        return if groups.include?('docker')
 
-        logger.debug "Adding user #{username} to docker group"
+        logger.debug "Adding #{username} user to docker group"
         ssh.execute("sudo usermod -aG docker #{username}", tty: true)
+        ssh.execute("groups #{username} | grep -q docker")
 
-        new_groups = `#{ssh.command('groups')} 2>&1`.strip
-        return logger.debug 'Successfully added user to docker group' if new_groups.include?('docker')
-
-        logger.error 'Failed to add user to docker group'
-        false
+        logger.debug 'Successfully added user to docker group'
+        true
       rescue StandardError => e
         logger.error "Error setting up Docker daemon access: #{e.message}"
         logger.debug e.backtrace.join("\n")
