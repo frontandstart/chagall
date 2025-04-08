@@ -11,18 +11,31 @@ module Chagall
   class Cli < Clamp::Command
     banner 'Chagall - Docker deployment tool'
 
-    option ['-s', '--server'], 'CHAGALL_SERVER', 'Server to deploy to'
-    option ['-n', '--name'], 'CHAGALL_NAME', 'Project name', default: Pathname.new(Dir.pwd).basename.to_s
-    option ['--release'], 'CHAGALL_RELEASE', 'Release tag', default: `git rev-parse --short HEAD`.strip
-    option ['-r', '--remote'], :flag, 'Build on server directrly', default: false
-    option ['-c', '--compose-files'], 'CHAGALL_COMPOSE_FILES', 'Comma separated list of compose files' do |s|
-      s.split(',')
+    Settings::OPTIONS.each do |opt|
+      if opt[:type] == :boolean
+        option opt[:flags], :flag, opt[:description],
+               default: opt[:default],
+               environment_variable: opt[:environment_variable]
+      elsif opt[:proc].is_a?(Proc)
+        option opt[:flags],
+               opt[:environment_variable].gsub('CHAGALL_'),
+               opt[:description],
+               default: opt[:default],
+               environment_variable: opt[:environment_variable] do |value|
+          opt[:proc].call(value)
+        end
+      else
+        option opt[:flags],
+               opt[:environment_variable].gsub('CHAGALL_'),
+               opt[:description],
+               default: opt[:default],
+               environment_variable: opt[:environment_variable]
+      end
     end
-    option ['--debug'], :flag, 'CHAGALL_DEBUG', 'Debug mode with pry attaching', default: false
-    option ['--skip-uncommit'], :flag, 'CHAGALL_SKIP_UNCOMMIT', 'Skip uncommitted changes check', default: false
 
     subcommand 'deploy', 'Deploy the application to the server' do
       def execute
+        Chagall::Settings.configure(collect_options_hash)
         binding.irb
         Chagall::Deploy::Main.new
       end
@@ -30,6 +43,7 @@ module Chagall
 
     subcommand 'setup', 'Setup the server for deployment' do
       def execute
+        Chagall::Settings.configure(collect_options_hash)
         Chagall::Setup::Main.new
       end
     end
@@ -40,6 +54,7 @@ module Chagall
       parameter '[ARGS] ...', 'Additional arguments', attribute_name: :args
 
       def execute
+        Chagall::Settings.configure(collect_options_hash)
         Chagall::Compose::Main.new(command, service, *args)
       end
     end
@@ -50,8 +65,33 @@ module Chagall
       end
 
       def execute
+        Chagall::Settings.configure(collect_options_hash)
         puts 'Rollback functionality not implemented yet'
       end
+    end
+
+    private
+
+    def collect_options_hash
+      result = {}
+
+      self.class.recognised_options.each do |option|
+        name = option.attribute_name.to_sym
+
+        next if !respond_to?(name) && !respond_to?("#{name}?")
+
+        binding.irb if option.attribute_name == 'context'
+
+        value = if option.type == :flag
+                  send("#{name}?")
+                else
+                  send(name)
+                end
+
+        result[name] = value unless value.nil?
+      end
+
+      result
     end
   end
 end

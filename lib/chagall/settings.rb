@@ -16,14 +16,16 @@ module Chagall
         flags: ['--debug'],
         description: 'Debug mode with pry attaching',
         type: :boolean,
-        default: false
+        default: false,
+        environment_variable: 'CHAGALL_DEBUG'
       },
       {
-        key: :skip_uncommit_check,
-        flags: ['--skip-uncommit-check'],
+        key: :skip_uncommit,
+        flags: ['--skip-uncommit'],
         description: 'Skip uncommitted changes check',
         type: :boolean,
-        default: false
+        default: false,
+        environment_variable: 'CHAGALL_SKIP_UNCOMMIT'
       },
       {
         key: :server,
@@ -31,7 +33,7 @@ module Chagall
         description: 'Server to deploy to',
         type: :string,
         required: true,
-        env_name: 'CHAGALL_SERVER'
+        environment_variable: 'CHAGALL_SERVER'
       },
       {
         key: :name,
@@ -39,7 +41,7 @@ module Chagall
         description: 'Project name',
         type: :string,
         default: Pathname.new(Dir.pwd).basename.to_s,
-        env_name: 'CHAGALL_NAME'
+        environment_variable: 'CHAGALL_NAME'
       },
       {
         key: :release,
@@ -48,23 +50,23 @@ module Chagall
         required: true,
         default: `git rev-parse --short HEAD`.strip,
         type: :string,
-        env_name: 'CHAGALL_RELEASE'
+        environment_variable: 'CHAGALL_RELEASE'
       },
       {
         key: :dry_run,
         type: :boolean,
         default: false,
         flags: ['-d', '--dry-run'],
-        env_name: 'CHAGALL_DRY_RUN',
-        desc: 'Dry run'
+        environment_variable: 'CHAGALL_DRY_RUN',
+        description: 'Dry run'
       },
       {
         key: :remote,
-        flags: ['-r', '--[no-]remote'],
+        flags: ['-r', '--remote'],
         description: 'Deploy remotely (build on remote server)',
         type: :boolean,
         default: false,
-        env_name: 'CHAGALL_REMOTE'
+        environment_variable: 'CHAGALL_REMOTE'
       },
       {
         key: :compose_files,
@@ -72,80 +74,85 @@ module Chagall
         description: 'Comma separated list of compose files',
         type: :array,
         required: true,
-        env_name: 'CHAGALL_COMPOSE_FILES'
+        environment_variable: 'CHAGALL_COMPOSE_FILES',
+        proc: ->(value) { value.split(',') }
       },
       {
         key: :target,
         type: :string,
         default: 'production',
         flags: ['--target'],
-        env_name: 'CHAGALL_TARGET',
-        desc: 'Target'
+        environment_variable: 'CHAGALL_TARGET',
+        description: 'Target'
       },
       {
         key: :dockerfile,
         type: :string,
         flags: ['-f', '--file'],
         default: 'Dockerfile',
-        env_name: 'CHAGALL_DOCKERFILE',
-        desc: 'Dockerfile'
+        environment_variable: 'CHAGALL_DOCKERFILE',
+        description: 'Dockerfile'
       },
       {
         key: :projects_folder,
         type: :string,
         default: CHAGALL_PROJECTS_FOLDER,
         flags: ['-p', '--projects-folder'],
-        env_name: 'CHAGALL_PROJECTS_FOLDER',
-        desc: 'Projects folder'
+        environment_variable: 'CHAGALL_PROJECTS_FOLDER',
+        description: 'Projects folder'
       },
       {
         key: :cache_from,
         type: :string,
         default: "#{TMP_CACHE_FOLDER}/.buildx-cache",
         flags: ['--cache-from'],
-        env_name: 'CHAGALL_CACHE_FROM',
-        desc: 'Cache from'
+        environment_variable: 'CHAGALL_CACHE_FROM',
+        description: 'Cache from'
       },
       {
         key: :cache_to,
         type: :string,
         default: "#{TMP_CACHE_FOLDER}/.buildx-cache-new",
         flags: ['--cache-to'],
-        env_name: 'CHAGALL_CACHE_TO',
-        desc: 'Cache to'
+        environment_variable: 'CHAGALL_CACHE_TO',
+        description: 'Cache to'
       },
       {
         key: :keep_releases,
         type: :integer,
         default: 3,
         flags: ['-k', '--keep-releases'],
-        env_name: 'CHAGALL_KEEP_RELEASES',
-        desc: 'Keep releases'
+        environment_variable: 'CHAGALL_KEEP_RELEASES',
+        description: 'Keep releases',
+        proc: ->(value) { Integer(value) }
       },
       {
         key: :ssh_args,
         type: :string,
         default: '-o StrictHostKeyChecking=no',
-        env_name: 'CHAGALL_SSH_ARGS',
-        flags: ['--ssh-args']
+        environment_variable: 'CHAGALL_SSH_ARGS',
+        flags: ['--ssh-args'],
+        description: 'SSH arguments'
       },
       {
-        key: :context,
+        key: :docker_context,
         type: :string,
-        flags: ['--context'],
-        env_name: 'CHAGALL_CONTEXT',
-        default: '.'
+        flags: ['--docker-context'],
+        environment_variable: 'CHAGALL_DOCKER_CONTEXT',
+        default: '.',
+        description: 'Docker context'
       },
       {
         key: :platform,
         type: :string,
-        flags: ['-p', '--platform'],
-        env_name: 'CHAGALL_PLATFORM',
-        default: 'linux/x86_64'
+        flags: ['--platform'],
+        environment_variable: 'CHAGALL_PLATFORM',
+        default: 'linux/x86_64',
+        description: 'Platform'
       }
     ].freeze
 
-    attr_accessor :options, :missing_options, :missing_compose_files, :argv
+    attr_accessor :options, :missing_options, :missing_compose_files
 
     class << self
       def configure(argv)
@@ -157,53 +164,16 @@ module Chagall
       end
     end
 
-    def configure(argv)
-      @argv = argv
+    def configure(parsed_options)
       @options = {}
       @missing_options = []
       @missing_compose_files = []
-      @argv = argv
-      setup
-      self
-    end
 
-    def setup
-      load_defaults_config_and_environment_variables
-      parse_arguments
+      @options.merge!(options_from_config_file)
+      @options.merge!(parsed_options)
+
       validate_options
-    end
-
-    def load_defaults_config_and_environment_variables
-      OPTIONS.each do |option|
-        @options[option[:key]] = option[:default] if option.key?(:default)
-        @options[option[:key]] = config_file[option[:key]] if config_file[option[:key]]
-
-        override_option_from_environment_variable(option)
-      end
-    end
-
-    def parse_arguments
-      OptionParser.new do |opts|
-        opts.banner = 'Usage: chagall [options] <command> [args]'
-        OPTIONS.each do |option|
-          flags     = option[:flags]
-          desc      = option[:description]
-          case option[:type]
-          when :boolean
-            opts.on(*flags, desc) do |value|
-              @options[option[:key]] = value
-            end
-          when :array
-            opts.on(*flags, Array, desc) do |value|
-              @options[option[:key]] = value
-            end
-          else
-            opts.on(*flags, option[:type], desc) do |value|
-              @options[option[:key]] = value
-            end
-          end
-        end
-      end.parse!(into: @options)
+      self
     end
 
     def validate_options
@@ -218,15 +188,17 @@ module Chagall
         error_message_string += "    These can be set via:\n"
         error_message_string += "      - CLI arguments (#{@missing_options.map { |o| o[:flags] }.join(', ')})\n"
         error_message_string += "      - Environment variables (#{@missing_options.map do |o|
-          o[:env_name]
+          o[:environment_variable] || o[:env_name]
         end.join(', ')})\n"
         error_message_string += "      - chagall.yml file\n"
       end
 
-      @options[:compose_files].each do |file|
-        unless File.exist?(file)
-          @missing_compose_files << file
-          error_message_string += "  Missing compose file: #{file}\n"
+      if @options[:compose_files]
+        @options[:compose_files].each do |file|
+          unless File.exist?(file)
+            @missing_compose_files << file
+            error_message_string += "  Missing compose file: #{file}\n"
+          end
         end
       end
 
@@ -235,24 +207,11 @@ module Chagall
       raise Chagall::SettingsError, error_message_string unless @options[:dry_run]
     end
 
-    def override_option_from_environment_variable(option)
-      env_name = option[:env_name]
-      return if env_name.nil? || ENV[env_name].nil?
+    def options_from_config_file
+      @options_from_config_file ||= begin
+        config_path = File.join(Dir.pwd, 'chagall.yml') || File.join(Dir.pwd, 'chagall.yaml')
+        return {} unless File.exist?(config_path)
 
-      value = case option[:type]
-              when :array then ENV[env_name].split(',')
-              when :boolean then true?(ENV[env_name])
-              else ENV[env_name]
-              end
-      @options[option[:key]] = value
-    end
-
-    def config_file
-      @config_file ||= begin
-        config_path = File.join(Dir.pwd, 'chagall.yml')
-        return unless File.exist?(config_path)
-
-        require 'yaml'
         config = YAML.load_file(config_path)
         config.transform_keys(&:to_sym)
       rescue StandardError => e

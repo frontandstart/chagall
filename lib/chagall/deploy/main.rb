@@ -18,7 +18,7 @@ module Chagall
         setup_signal_handlers
         Time.now
 
-        t('Checking uncommitted changes') { check_uncommit_changes } unless Settings[:skip_uncommit_check]
+        t('Checking uncommitted changes') { check_uncommit_changes } unless Settings[:skip_uncommit]
         t('Check image or build') { check_image_or_build }
         t('tag as production') { tag_as_production }
         t('update compose files') { update_compose_files }
@@ -175,7 +175,7 @@ module Chagall
           args.push('--output type=docker,dest=-')
         end
 
-        args.push(Settings[:context])
+        args.push(Settings[:docker_context])
 
         args = args.map { |arg| "    #{arg}" }
                    .join("\\\n")

@@ -12,6 +12,7 @@ require 'fileutils'
 require 'open3'
 require 'tmpdir'
 require 'logger'
+require 'climate_control'
 require_relative '../lib/chagall'
 
 # Define modules BEFORE the RSpec configuration block

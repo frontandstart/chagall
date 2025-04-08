@@ -13,6 +13,7 @@ end
 
 group :development, :test do
   gem 'byebug'
+  gem 'climate_control'
   # gem
   gem 'pry'
   gem 'rake'

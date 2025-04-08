@@ -6,8 +6,8 @@ module Chagall
 
     LOG_LEVELS = {
       'info' => Logger::INFO,
-      'warn' => Logger::WARN,
       'debug' => Logger::DEBUG,
+      'warn' => Logger::WARN,
       'error' => Logger::ERROR
     }.freeze
 
