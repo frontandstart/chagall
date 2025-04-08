@@ -5,26 +5,18 @@ require_relative '../settings'
 require_relative '../ssh'
 require 'digest'
 require 'benchmark'
-require 'logger'
 require 'yaml'
 
 module Chagall
   module Deploy
-    class Main
-      LOG_LEVELS = {
-        'debug' => Logger::DEBUG,
-        'info' => Logger::INFO,
-        'warn' => Logger::WARN,
-        'error' => Logger::ERROR
-      }.freeze
+    class Main < Base
+      attr_reader :total_time
 
       def initialize(argv)
+        super()
         @interrupted = false
         @total_time = 0.0
         setup_signal_handlers
-        setup_logger
-
-        @ssh = SSH.new(server: Settings[:server], ssh_args: Settings[:ssh_args])
 
         Time.now
 
@@ -90,21 +82,6 @@ module Chagall
       end
 
       private
-
-      attr_reader :logger, :total_time, :ssh
-
-      def setup_logger
-        @logger = Logger.new($stdout)
-        @logger.formatter = proc do |severity, _, _, msg|
-          if severity == 'DEBUG'
-            "[#{severity}] #{msg}\n"
-          else
-            "#{msg}\n"
-          end
-        end
-
-        @logger.level = LOG_LEVELS[ENV.fetch('LOG_LEVEL', 'debug').downcase] || Logger::DEBUG
-      end
 
       def print_total_time
         logger.info "Total execution time: #{format('%.2f', @total_time)}s"

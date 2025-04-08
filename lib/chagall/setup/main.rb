@@ -10,7 +10,7 @@ module Chagall
       class DockerSetupError < StandardError; end
 
       def initialize
-        super
+        super()
         setup
       end
 

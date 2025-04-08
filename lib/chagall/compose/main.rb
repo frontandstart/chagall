@@ -1,5 +1,4 @@
 require 'English'
-require_relative '../ssh'
 require_relative '../settings'
 
 module Chagall
@@ -7,6 +6,7 @@ module Chagall
     # Build and execute command usign docker compose on server
     class Main < Base
       def initialize(command, argv)
+        super()
         @command = command
         @service_name = argv.shift
         @arguments = argv.join(' ')
@@ -21,7 +21,7 @@ module Chagall
         cmd = "cd #{Chagall::Settings.instance.project_folder_path} && #{build_docker_compose_command} #{@command}"
         cmd << " #{@service_name} #{@arguments}"
 
-        @ssh.execute(cmd, tty: true)
+        ssh.execute(cmd, tty: true)
       end
 
       private
