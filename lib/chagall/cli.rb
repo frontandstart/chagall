@@ -49,13 +49,38 @@ module Chagall
     end
 
     subcommand 'compose', 'Run Docker Compose commands with arguments passed through' do
-      parameter 'COMMAND', 'The docker-compose command to run'
-      parameter 'SERVICE', 'The service name'
-      parameter '[ARGS] ...', 'Additional arguments', attribute_name: :args
+      # Override parse method to handle all arguments after the subcommand
+      def parse(arguments)
+        if arguments.empty?
+          puts 'ERROR: Missing required arguments'
+          puts 'Usage: chagall compose COMMAND SERVICE [OPTIONS]'
+          exit(1)
+        end
+
+        # Extract the first two arguments as command and service
+        @command = arguments.shift
+        @service = arguments.empty? ? nil : arguments.shift
+
+        # Store the rest as raw args
+        @raw_args = arguments
+
+        # Validate required arguments
+        if @command.nil? || @command.empty?
+          puts 'ERROR: Command is required'
+          puts 'Usage: chagall compose COMMAND SERVICE [OPTIONS]'
+          exit(1)
+        end
+
+        return unless @service.nil? || @service.empty?
+
+        puts 'ERROR: Service name is required'
+        puts 'Usage: chagall compose COMMAND SERVICE [OPTIONS]'
+        exit(1)
+      end
 
       def execute
         Chagall::Settings.configure(collect_options_hash)
-        Chagall::Compose::Main.new(command, service, *args)
+        Chagall::Compose::Main.new(@command, @service, *@raw_args)
       end
     end
 
