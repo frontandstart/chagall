@@ -8,7 +8,7 @@
 require_relative '../lib/chagall'
 
 begin
-  Chagall::CLI.start(ARGV)
+  Chagall::Cli.start(ARGV)
 rescue StandardError => e
   puts "  \e[31mERROR (#{e.class}): #{e.message}\e[0m"
   puts e.backtrace if ENV['VERBOSE']

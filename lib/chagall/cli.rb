@@ -4,7 +4,7 @@ require 'thor'
 require_relative 'settings'
 require_relative 'deploy/main'
 require_relative 'compose/main'
-
+require_relative 'base'
 module Chagall
   class Cli < Thor
     class_option :server, type: :string, aliases: '-s', desc: 'Server to deploy to', required: false, banner: 'SERVER'
@@ -19,61 +19,18 @@ module Chagall
 
     desc 'deploy', 'Deploy the application to the server'
     def deploy
-      # Configure settings from Thor options
-      configure_settings(options)
-
-      # Instantiate and run deploy
-      Chagall::Deploy::Main.new([])
+      Chagall::Deploy::Main.new
     end
 
     desc 'setup', 'Setup the server for deployment'
     def setup
-      # Configure settings from Thor options
-      configure_settings(options)
-
       Chagall::Setup::Main.new
     end
 
-    desc 'compose', 'Run Docker Compose commands'
-    def compose(cmd_name, *args)
-      # Configure settings from Thor options
-      configure_settings(options)
-
+    desc 'compose COMMAND SERVICE [ARGS...]', 'Run Docker Compose commands with arguments passed through'
+    def compose(cmd_name, service_name, *args)
+      binding.irb
       Chagall::Compose::Main.new(cmd_name.to_sym, [service_name, *args])
-    end
-
-    private
-
-    def configure_settings(thor_options)
-      # Convert Thor options to the format expected by Settings
-      config_options = thor_options.transform_keys(&:to_sym)
-
-      # Fill in Settings options from Thor options
-      Chagall::Settings.configure(transform_options_to_args(config_options))
-    end
-
-    def transform_options_to_args(options)
-      args = []
-
-      options.each do |key, value|
-        next if value.nil?
-
-        option_def = Chagall::Settings::OPTIONS.find { |opt| opt[:key] == key }
-        next unless option_def
-
-        flag = option_def[:flags].first
-
-        case option_def[:type]
-        when :boolean
-          args << flag if value
-        when :array
-          args << flag << value.join(',')
-        else
-          args << flag << value.to_s
-        end
-      end
-
-      args
     end
   end
 end

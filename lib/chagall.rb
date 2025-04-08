@@ -14,4 +14,8 @@ require 'thor'
 
 loader = Zeitwerk::Loader.for_gem
 loader.setup
-loader.eager_load_namespace(Chagall::Cli)
+# Eager load necessary namespaces
+loader.eager_load_namespace(Chagall::Deploy)
+loader.eager_load_namespace(Chagall::Compose)
+
+require_relative 'chagall/cli'
