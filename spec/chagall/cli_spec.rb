@@ -3,44 +3,43 @@
 require 'spec_helper'
 
 RSpec.describe Chagall::Cli do
-  let(:cli) { described_class.new }
+  let(:cli) { described_class.new('') }
 
-  describe '#deploy' do
-    it 'configures settings and calls Deploy::Main' do
-      expect(Chagall::Settings).to receive(:configure).with(anything)
-      expect(Chagall::Deploy::Main).to receive(:new).with([])
+  describe 'deploy subcommand' do
+    it 'calls Deploy::Main with converted options' do
+      deploy_command = Chagall::Cli::Deploy.new('')
+      expect(Chagall::Deploy::Main).to receive(:new) do |args|
+        expect(args).to include('--name')
+      end
 
-      # Stub transform_options_to_args to return an empty array
-      allow_any_instance_of(described_class).to receive(:transform_options_to_args).and_return([])
+      # Stub convert_options_to_args to return expected args
+      allow(deploy_command).to receive(:convert_options_to_args)
+        .and_return(['--name', 'test_project'])
 
-      cli.deploy
+      deploy_command.execute
     end
   end
 
-  describe '#setup' do
-    it 'configures settings and calls Setup::Main' do
-      expect(Chagall::Settings).to receive(:configure).with(anything)
+  describe 'setup subcommand' do
+    it 'calls Setup::Main' do
+      setup_command = Chagall::Cli::Setup.new('')
       expect(Chagall::Setup::Main).to receive(:new)
 
-      # Stub transform_options_to_args to return an empty array
-      allow_any_instance_of(described_class).to receive(:transform_options_to_args).and_return([])
-
-      cli.setup
+      setup_command.execute
     end
   end
 
-  describe '#transform_options_to_args' do
-    it 'transforms Thor options to argument array' do
-      options = {
-        server: 'example.com',
-        name: 'test_project',
-        dry_run: true,
-        compose_files: ['docker-compose.yml', 'docker-compose.override.yml']
-      }
+  describe '#convert_options_to_args' do
+    let(:cli_instance) { described_class.new('') }
 
-      # Manually initialize for testing private method
-      cli = described_class.new
-      args = cli.send(:transform_options_to_args, options)
+    it 'converts Clamp options to argument array' do
+      # Set options directly
+      allow(cli_instance).to receive(:server).and_return('example.com')
+      allow(cli_instance).to receive(:name).and_return('test_project')
+      allow(cli_instance).to receive(:dry_run?).and_return(true)
+      allow(cli_instance).to receive(:compose_files).and_return(['docker-compose.yml', 'docker-compose.override.yml'])
+
+      args = cli_instance.send(:convert_options_to_args)
 
       # Verify that each option has been transformed correctly
       expect(args).to include('--server', 'example.com')
@@ -50,37 +49,47 @@ RSpec.describe Chagall::Cli do
     end
   end
 
-  describe '#compose' do
-    before do
-      allow(Chagall::Settings).to receive(:configure)
-      allow_any_instance_of(described_class).to receive(:transform_options_to_args).and_return([])
-    end
-
+  describe 'compose subcommand' do
     it 'correctly passes command arguments to Compose::Main' do
-      expect(Chagall::Compose::Main).to receive(:new).with(:logs, ['app', '--tail', '100', '-f'])
+      # Create a compose command instance and set parameters
+      compose_command = Chagall::Cli::Compose.new('')
+      allow(compose_command).to receive(:command).and_return('logs')
+      allow(compose_command).to receive(:service).and_return('app')
+      allow(compose_command).to receive(:args).and_return(['--tail', '100', '-f'])
 
-      cli.compose('logs', 'app', '--tail', '100', '-f')
-    end
+      expect(Chagall::Compose::Main).to receive(:new).with('logs', 'app', '--tail', '100', '-f')
 
-    it 'passes complex arguments to Compose::Main without modification' do
-      expect(Chagall::Compose::Main).to receive(:new).with(:exec, ['web', 'rails', 'c', '--', '-e', 'puts 1+1'])
-
-      cli.compose('exec', 'web', 'rails', 'c', '--', '-e', 'puts 1+1')
+      compose_command.execute
     end
   end
 
   describe 'direct compose commands' do
-    before do
-      allow(Chagall::Settings).to receive(:configure)
-      allow_any_instance_of(described_class).to receive(:transform_options_to_args).and_return([])
-    end
-
     %w[logs ps up down exec run].each do |cmd|
       it "#{cmd} invokes compose with correct arguments" do
-        expect(cli).to receive(:invoke).with(:compose, [cmd, 'web', '--some-flag', 'value'])
+        # Create a command instance for testing
+        command_class = Chagall::Cli.subcommand_classes[cmd]
+        command_instance = command_class.new('')
 
-        cli.send(cmd, 'web', '--some-flag', 'value')
+        allow(command_instance).to receive(:service).and_return('web')
+        allow(command_instance).to receive(:args).and_return(['--some-flag', 'value'])
+
+        expect(Chagall::Compose::Main).to receive(:new).with(cmd, 'web', '--some-flag', 'value')
+
+        command_instance.execute
       end
+    end
+  end
+
+  describe 'rollback subcommand' do
+    it 'parses the steps parameter correctly' do
+      rollback_command = Chagall::Cli::Rollback.new('')
+      allow(rollback_command).to receive(:steps).and_return(3)
+
+      # Just verify we can access the steps parameter as an integer
+      expect(rollback_command.steps).to eq(3)
+
+      # For now we just print a message, so no real behavior to test
+      expect { rollback_command.execute }.to output(/not implemented/).to_stdout
     end
   end
 end

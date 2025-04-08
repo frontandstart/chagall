@@ -1,36 +1,57 @@
 # frozen_string_literal: true
 
-require 'thor'
+require 'clamp'
 require_relative 'settings'
 require_relative 'deploy/main'
 require_relative 'compose/main'
-require_relative 'base'
+
+Clamp.allow_options_after_parameters = true
+
 module Chagall
-  class Cli < Thor
-    class_option :server, type: :string, aliases: '-s', desc: 'Server to deploy to', required: false, banner: 'SERVER'
-    class_option :name, type: :string, aliases: '-n', desc: 'Project name', default: Pathname.new(Dir.pwd).basename.to_s
-    class_option :release, type: :string, desc: 'Release tag', default: `git rev-parse --short HEAD`.strip
-    class_option :dry_run, type: :boolean, aliases: '-d', desc: 'Dry run', default: false
-    class_option :remote, type: :boolean, aliases: '-r', desc: 'Deploy remotely (build on remote server)',
-                          default: false
-    class_option :compose_files, type: :array, aliases: '-c', desc: 'Comma separated list of compose files'
-    class_option :debug, type: :boolean, desc: 'Debug mode with pry attaching', default: false
-    class_option :skip_uncommit_check, type: :boolean, desc: 'Skip uncommitted changes check', default: false
+  class Cli < Clamp::Command
+    banner 'Chagall - Docker deployment tool'
 
-    desc 'deploy', 'Deploy the application to the server'
-    def deploy
-      Chagall::Deploy::Main.new
+    option ['-s', '--server'], 'CHAGALL_SERVER', 'Server to deploy to'
+    option ['-n', '--name'], 'CHAGALL_NAME', 'Project name', default: Pathname.new(Dir.pwd).basename.to_s
+    option ['--release'], 'CHAGALL_RELEASE', 'Release tag', default: `git rev-parse --short HEAD`.strip
+    option ['-r', '--remote'], :flag, 'Build on server directrly', default: false
+    option ['-c', '--compose-files'], 'CHAGALL_COMPOSE_FILES', 'Comma separated list of compose files' do |s|
+      s.split(',')
+    end
+    option ['--debug'], :flag, 'CHAGALL_DEBUG', 'Debug mode with pry attaching', default: false
+    option ['--skip-uncommit'], :flag, 'CHAGALL_SKIP_UNCOMMIT', 'Skip uncommitted changes check', default: false
+
+    subcommand 'deploy', 'Deploy the application to the server' do
+      def execute
+        binding.irb
+        Chagall::Deploy::Main.new
+      end
     end
 
-    desc 'setup', 'Setup the server for deployment'
-    def setup
-      Chagall::Setup::Main.new
+    subcommand 'setup', 'Setup the server for deployment' do
+      def execute
+        Chagall::Setup::Main.new
+      end
     end
 
-    desc 'compose COMMAND SERVICE [ARGS...]', 'Run Docker Compose commands with arguments passed through'
-    def compose(cmd_name, service_name, *args)
-      binding.irb
-      Chagall::Compose::Main.new(cmd_name.to_sym, [service_name, *args])
+    subcommand 'compose', 'Run Docker Compose commands with arguments passed through' do
+      parameter 'COMMAND', 'The docker-compose command to run'
+      parameter 'SERVICE', 'The service name'
+      parameter '[ARGS] ...', 'Additional arguments', attribute_name: :args
+
+      def execute
+        Chagall::Compose::Main.new(command, service, *args)
+      end
+    end
+
+    subcommand 'rollback', 'Rollback to previous deployment' do
+      option ['--steps'], 'STEPS', 'Number of steps to rollback', default: '1' do |s|
+        Integer(s)
+      end
+
+      def execute
+        puts 'Rollback functionality not implemented yet'
+      end
     end
   end
 end

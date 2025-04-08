@@ -5,6 +5,8 @@ git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
 gemspec
 
+gem 'clamp'
+
 group :rubocop do
   gem 'rubocop-rails-omakase', require: false
 end

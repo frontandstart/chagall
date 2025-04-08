@@ -5,9 +5,9 @@ module Chagall
     attr_reader :logger, :ssh
 
     LOG_LEVELS = {
-      'debug' => Logger::DEBUG,
       'info' => Logger::INFO,
       'warn' => Logger::WARN,
+      'debug' => Logger::DEBUG,
       'error' => Logger::ERROR
     }.freeze
 
@@ -21,7 +21,7 @@ module Chagall
         end
       end
 
-      @logger.level = LOG_LEVELS[ENV.fetch('LOG_LEVEL', 'debug').downcase]
+      @logger.level = LOG_LEVELS[ENV.fetch('LOG_LEVEL', 'info')]
 
       @ssh = SSH.new
     end

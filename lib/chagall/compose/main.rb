@@ -5,24 +5,24 @@ module Chagall
   module Compose
     # Build and execute command usign docker compose on server
     class Main < Base
-      def initialize(command, argv)
+      attr_reader :command, :service_name, :arguments
+
+      def initialize(command, service_name, *args)
         super()
         @command = command
-        @service_name = argv.shift
-        # Join arguments with spaces to preserve them exactly as passed
-        @arguments = argv.join(' ')
+        @service_name = service_name
+        @arguments = args.join(' ')
 
         raise Chagall::Error, 'Service name is required' if @service_name.nil? || @service_name.empty?
         raise Chagall::Error, 'Command is required' if @command.nil? || @command.empty?
 
-        binding.pry
         run_command
       end
 
       def run_command
-        cmd = "cd #{Chagall::Settings.instance.project_folder_path} && #{build_docker_compose_command} #{@command}"
-        cmd << " #{@service_name}"
-        cmd << " #{@arguments}" unless @arguments.empty?
+        cmd = "cd #{Settings.instance.project_folder_path} && #{build_docker_compose_command} #{@command}"
+        cmd << " #{service_name}"
+        cmd << " #{arguments}" unless arguments.empty?
 
         logger.debug "Executing: #{cmd}"
         ssh.execute(cmd, tty: true)
@@ -31,7 +31,7 @@ module Chagall
       private
 
       def build_docker_compose_command
-        compose_files = Chagall::Settings[:compose_files]
+        compose_files = Settings[:compose_files]
         compose_cmd = ['docker compose']
 
         if compose_files && !compose_files.empty?

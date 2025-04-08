@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'English'
 require_relative '../settings'
 require_relative '../ssh'
 require 'digest'
@@ -12,12 +11,11 @@ module Chagall
     class Main < Base
       attr_reader :total_time
 
-      def initialize(argv)
+      def initialize
         super()
         @interrupted = false
         @total_time = 0.0
         setup_signal_handlers
-
         Time.now
 
         t('Checking uncommitted changes') { check_uncommit_changes } unless Settings[:skip_uncommit_check]
