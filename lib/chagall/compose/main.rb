@@ -1,40 +1,44 @@
-require 'English'
-require_relative '../settings'
+require_relative "../settings"
+require_relative "../base"
 
 module Chagall
   module Compose
     # Build and execute command usign docker compose on server
     class Main < Base
-      def initialize(command, argv)
+      attr_reader :command, :arguments
+
+      def initialize(command, args)
         super()
         @command = command
-        @service_name = argv.shift
-        @arguments = argv.join(' ')
+        @arguments = args.join(" ") if args.is_a?(Array)
+        @arguments ||= args.to_s
 
-        raise Chagall::Error, 'Service name is required' if @service_name.nil? || @service_name.empty?
-        raise Chagall::Error, 'Command is required' if @command.nil? || @command.empty?
+        raise Chagall::Error, "Command is required" if @command.nil? || @command.empty?
 
         run_command
       end
 
       def run_command
-        cmd = "cd #{Chagall::Settings.instance.project_folder_path} && #{build_docker_compose_command} #{@command}"
-        cmd << " #{@service_name} #{@arguments}"
+        cmd = "cd #{Settings.instance.project_folder_path} && #{build_docker_compose_command} #{@command}"
+        cmd << " #{arguments}" unless arguments.empty?
 
+        logger.debug "Executing: #{cmd}"
         ssh.execute(cmd, tty: true)
       end
 
       private
 
       def build_docker_compose_command
-        compose_files = Chagall::Settings[:compose_files]
-        compose_cmd = ['docker compose']
+        compose_files = Settings[:compose_files]
+        compose_cmd = [ "docker compose" ]
 
-        compose_files.each do |file|
-          compose_cmd << "-f #{File.basename(file)}"
+        if compose_files && !compose_files.empty?
+          compose_files.each do |file|
+            compose_cmd << "-f #{File.basename(file)}"
+          end
         end
 
-        compose_cmd.join(' ')
+        compose_cmd.join(" ")
       end
     end
   end

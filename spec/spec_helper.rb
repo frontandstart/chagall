@@ -12,12 +12,13 @@ require 'fileutils'
 require 'open3'
 require 'tmpdir'
 require 'logger'
+require 'climate_control'
 require_relative '../lib/chagall'
 
 # Define modules BEFORE the RSpec configuration block
 module FileHelpers
   def create_tempfile(content, extension: '')
-    Tempfile.new(['chagall', extension]).tap do |f|
+    Tempfile.new([ 'chagall', extension ]).tap do |f|
       f.write(content)
       f.close
     end

@@ -1,8 +1,8 @@
 PATH
   remote: .
   specs:
-    chagall (0.1.0)
-      gli
+    chagall (0.0.1.beta)
+      clamp
       pry
       zeitwerk (~> 2.5)
 
@@ -29,38 +29,56 @@ GEM
     benchmark (0.4.0)
     bigdecimal (3.1.8)
     byebug (11.1.3)
+    clamp (1.3.2)
+    climate_control (1.2.0)
     coderay (1.1.3)
     concurrent-ruby (1.3.5)
     connection_pool (2.5.0)
     crack (1.0.0)
       bigdecimal
       rexml
+    date (3.4.1)
+    debug (1.10.0)
+      irb (~> 1.10)
+      reline (>= 0.3.8)
     diff-lcs (1.6.0)
     drb (2.2.1)
-    gli (2.22.2)
-      ostruct
     hashdiff (1.1.1)
     i18n (1.14.7)
       concurrent-ruby (~> 1.0)
+    io-console (0.8.0)
+    irb (1.15.2)
+      pp (>= 0.6.0)
+      rdoc (>= 4.0.0)
+      reline (>= 0.4.2)
     json (2.9.1)
     language_server-protocol (3.17.0.4)
     logger (1.6.5)
     method_source (1.1.0)
     minitest (5.25.4)
-    ostruct (0.6.1)
     parallel (1.26.3)
     parser (3.3.7.1)
       ast (~> 2.4.1)
       racc
+    pp (0.6.2)
+      prettyprint
+    prettyprint (0.2.0)
     pry (0.14.2)
       coderay (~> 1.1)
       method_source (~> 1.0)
+    psych (5.2.3)
+      date
+      stringio
     public_suffix (5.1.1)
     racc (1.8.1)
     rack (3.1.9)
     rainbow (3.1.1)
     rake (13.2.1)
+    rdoc (6.13.1)
+      psych (>= 4.0.0)
     regexp_parser (2.10.0)
+    reline (0.6.1)
+      io-console (~> 0.5)
     rexml (3.3.9)
     rspec (3.13.0)
       rspec-core (~> 3.13.0)
@@ -105,6 +123,7 @@ GEM
       rubocop-rails
     ruby-progressbar (1.13.0)
     securerandom (0.4.1)
+    stringio (3.1.6)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
     unicode-display_width (3.1.4)
@@ -124,6 +143,9 @@ PLATFORMS
 DEPENDENCIES
   byebug
   chagall!
+  clamp
+  climate_control
+  debug
   pry
   rake
   rspec (~> 3.12)
