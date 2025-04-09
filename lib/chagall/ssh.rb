@@ -1,3 +1,5 @@
+
+require 'English'
 module Chagall
   class SSH
     attr_reader :server, :ssh_args

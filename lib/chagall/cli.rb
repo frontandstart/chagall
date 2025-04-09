@@ -9,18 +9,29 @@ Clamp.allow_options_after_parameters = true
 
 module Chagall
   class Cli < Clamp::Command
-    banner 'Chagall - Docker deployment tool'
+    def self.options_from_config_file
+      @options_from_config_file ||= begin
+        config_path = File.join(Dir.pwd, 'chagall.yml') || File.join(Dir.pwd, 'chagall.yaml')
+        return {} unless File.exist?(config_path)
+
+        config = YAML.load_file(config_path)
+        config.transform_keys(&:to_sym)
+      rescue StandardError => e
+        puts "Warning: Error loading chagall.yml: #{e.message}"
+        {}
+      end
+    end
 
     Settings::OPTIONS.each do |opt|
       if opt[:type] == :boolean
         option opt[:flags], :flag, opt[:description],
-               default: opt[:default],
+               default: options_from_config_file[opt[:key]] || opt[:default],
                environment_variable: opt[:environment_variable]
       elsif opt[:proc].is_a?(Proc)
         option opt[:flags],
                opt[:environment_variable].gsub('CHAGALL_'),
                opt[:description],
-               default: opt[:default],
+               default: options_from_config_file[opt[:key]] || opt[:default],
                environment_variable: opt[:environment_variable] do |value|
           opt[:proc].call(value)
         end
@@ -28,7 +39,7 @@ module Chagall
         option opt[:flags],
                opt[:environment_variable].gsub('CHAGALL_'),
                opt[:description],
-               default: opt[:default],
+               default: options_from_config_file[opt[:key]] || opt[:default],
                environment_variable: opt[:environment_variable]
       end
     end
@@ -36,7 +47,6 @@ module Chagall
     subcommand 'deploy', 'Deploy the application to the server' do
       def execute
         Chagall::Settings.configure(collect_options_hash)
-        binding.irb
         Chagall::Deploy::Main.new
       end
     end
@@ -79,6 +89,7 @@ module Chagall
       end
 
       def execute
+        binding.irb
         Chagall::Settings.configure(collect_options_hash)
         Chagall::Compose::Main.new(@command, @service, *@raw_args)
       end
@@ -118,5 +129,6 @@ module Chagall
 
       result
     end
+
   end
 end

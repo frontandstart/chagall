@@ -7,6 +7,7 @@ module Chagall
   class Settings
     include Singleton
 
+    attr_accessor :options, :missing_options, :missing_compose_files
     CHAGALL_PROJECTS_FOLDER = '~/projects'
     TMP_CACHE_FOLDER = 'tmp'
 
@@ -151,9 +152,6 @@ module Chagall
         description: 'Platform'
       }
     ].freeze
-
-    attr_accessor :options, :missing_options, :missing_compose_files
-
     class << self
       def configure(argv)
         instance.configure(argv)
@@ -165,15 +163,14 @@ module Chagall
     end
 
     def configure(parsed_options)
-      @options = {}
+      @options = parsed_options
       @missing_options = []
       @missing_compose_files = []
 
-      @options.merge!(options_from_config_file)
-      @options.merge!(parsed_options)
+      # @options.merge!(options_from_config_file)
+      # @options.merge!(parsed_options)
 
       validate_options
-      self
     end
 
     def validate_options
