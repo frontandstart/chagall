@@ -1,10 +1,7 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# # Prevent failures from being reported twice.
-
-# require 'chagall'
-require_relative '../lib/chagall'
+require 'chagall'
 
 begin
   Chagall::Cli.run
