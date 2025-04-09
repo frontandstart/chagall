@@ -2,8 +2,8 @@ PATH
   remote: .
   specs:
     chagall (0.0.1.beta2)
-      clamp
-      pry
+      clamp (~> 1.3)
+      pry (~> 0.14)
       zeitwerk (~> 2.5)
 
 GEM
@@ -30,7 +30,6 @@ GEM
     bigdecimal (3.1.8)
     byebug (11.1.3)
     clamp (1.3.2)
-    climate_control (1.2.0)
     coderay (1.1.3)
     concurrent-ruby (1.3.5)
     connection_pool (2.5.0)
@@ -141,17 +140,16 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  byebug
+  byebug (~> 11.1)
   chagall!
-  climate_control
-  debug
-  pry
-  rake
+  debug (~> 1.10)
+  pry (~> 0.14)
+  rake (~> 13.0)
   rspec (~> 3.12)
-  rspec-core
-  rspec-expectations
+  rspec-core (~> 3.12)
+  rspec-expectations (~> 3.12)
   rubocop-rails-omakase
-  webmock
+  webmock (~> 3.18)
 
 BUNDLED WITH
    2.4.22

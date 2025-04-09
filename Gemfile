@@ -10,11 +10,10 @@ group :rubocop do
 end
 
 group :development, :test do
-  gem "byebug"
-  gem "climate_control"
-  gem "pry"
-  gem "rake"
-  gem "rspec-core"
-  gem "rspec-expectations"
-  gem "webmock"
+  gem "byebug", "~> 11.1"
+  gem "pry", "~> 0.14"
+  gem "rake", "~> 13.0"
+  gem "rspec-core", "~> 3.12"
+  gem "rspec-expectations", "~> 3.12"
+  gem "webmock", "~> 3.18"
 end

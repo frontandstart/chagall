@@ -14,9 +14,9 @@ Gem::Specification.new do |spec|
 
   spec.executables = %w[chagall]
 
-  spec.add_dependency 'clamp'
-  spec.add_dependency 'pry'
+  spec.add_dependency 'clamp', '~> 1.3'
+  spec.add_dependency 'pry', '~> 0.14'
   spec.add_dependency 'zeitwerk', '~> 2.5'
-  spec.add_development_dependency 'debug'
+  spec.add_development_dependency 'debug', '~> 1.10'
   spec.add_development_dependency 'rspec', '~> 3.12'
 end
