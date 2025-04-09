@@ -4,9 +4,6 @@
 
 **Chagall Deploy** is a deployment tool for applications for staging and production single-server setups. 
 
-
-Install `gem install chagall --pre`
-
 - [x] `bin/chagall setup` Bootstap server
   - Install docker with sudo if user not root
   - Make docker deamon accessable from user
@@ -38,7 +35,7 @@ Install `gem install chagall --pre`
 To install Chagall Deploy, run this command in your project root:
 
 ```bash
-curl -sSL https://github.com/frontandstart/chagall-deploy/install.sh | bash
+  gem install chagall --pre
 ```
 
 ## Usage

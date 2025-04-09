@@ -1,13 +1,11 @@
 name: myapp
 
-servers:
-  - someserver
-  - anotherserver
+servers: user@someserver
 
-projects_folder: ~/chagall
+projects_folder: ~/projects
 
 dockerfile: Dockerfile
-context: .
+docker_context: .
 
 build_args:
   - --build-arg=key=value
