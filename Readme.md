@@ -2,9 +2,10 @@
 
 ## Project under active development
 
-**Chagall Deploy** is a streamlined deployment tool for Rails applications, optimized for development and production single-server setups. 
+**Chagall Deploy** is a deployment tool for applications for staging and production single-server setups. 
 
-- It generates Docker configurations based on your application’s dependencies
+- [ ] Generates Docker and docker compose configurations based on your application’s dependencies
+  - Only for rails apps
 - Don't require Container Registry like Docker Hub or ECR
 - Detect dependecies and include services like
   - Redis

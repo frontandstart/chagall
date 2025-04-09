@@ -44,6 +44,11 @@ module Chagall
       end
     end
 
+    option "--version", :flag, "Show version" do
+      puts Chagall::VERSION
+      exit(0)
+    end
+
     subcommand "deploy", "Deploy the application to the server" do
       def execute
         Chagall::Settings.configure(collect_options_hash)

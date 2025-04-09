@@ -5,8 +5,8 @@ require_relative 'lib/chagall/version'
 Gem::Specification.new do |spec|
   spec.name        = 'chagall'
   spec.version     = Chagall::VERSION
-  spec.authors     = [ 'Roman Klevtsov @r3cha' ]
-  spec.email       = '@r3cha'
+  spec.authors     = [ 'Roman Klevtsov' ]
+  spec.email       = 'frontandstart@gmail.com'
   spec.homepage    = 'https://github.com/frontandstart/chagall'
   spec.summary     = 'Chagall is a deployment tool for Rails applications, optimized for development and production single-server docker/podman compose setups.'
   spec.license     = 'MIT'
