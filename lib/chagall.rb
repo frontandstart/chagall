@@ -10,12 +10,8 @@ end
 require "zeitwerk"
 require "yaml"
 require "pathname"
-require "thor"
+require "clamp"
 
 loader = Zeitwerk::Loader.for_gem
 loader.setup
-# Eager load necessary namespaces
-loader.eager_load_namespace(Chagall::Deploy)
-loader.eager_load_namespace(Chagall::Compose)
-
-require_relative "chagall/cli"
+loader.eager_load_namespace(Chagall::Cli)
