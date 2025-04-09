@@ -89,7 +89,7 @@ module Chagall
       {
         key: :dockerfile,
         type: :string,
-        flags: [ "-f", "--file" ],
+        flags: [ "-f", "--dockerfile" ],
         default: "Dockerfile",
         environment_variable: "CHAGALL_DOCKERFILE",
         description: "Dockerfile"
@@ -166,9 +166,6 @@ module Chagall
       @options = parsed_options
       @missing_options = []
       @missing_compose_files = []
-
-      # @options.merge!(options_from_config_file)
-      # @options.merge!(parsed_options)
 
       validate_options
     end

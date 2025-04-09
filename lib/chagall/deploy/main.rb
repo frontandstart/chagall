@@ -178,7 +178,7 @@ module Chagall
         args.push(Settings[:docker_context])
 
         args = args.map { |arg| "    #{arg}" }
-                   .join("\\\n")
+                   .join(" \\\n")
 
         cmd =  "docker build \\\n#{args}"
         if Settings[:remote]

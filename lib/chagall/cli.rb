@@ -51,7 +51,9 @@ module Chagall
 
     subcommand "deploy", "Deploy the application to the server" do
       def execute
+        binding.irb
         Chagall::Settings.configure(collect_options_hash)
+
         Chagall::Deploy::Main.new
       end
     end
@@ -112,8 +114,6 @@ module Chagall
         name = option.attribute_name.to_sym
 
         next if !respond_to?(name) && !respond_to?("#{name}?")
-
-        binding.irb if option.attribute_name == "context"
 
         value = if option.type == :flag
                   send("#{name}?")
