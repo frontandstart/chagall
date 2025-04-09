@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    chagall (0.0.1.beta1)
+    chagall (0.0.1.beta2)
       clamp
       pry
       zeitwerk (~> 2.5)
