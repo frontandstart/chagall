@@ -21,7 +21,7 @@ RSpec.describe Chagall::Cli do
       it 'passes the arguments correctly' do
         expect(Chagall::Compose::Main).to receive(:new).with('up', '-d')
 
-        compose_subcommand.run('chagall', ['up', '-d'])
+        compose_subcommand.run('chagall', [ 'up', '-d' ])
       end
     end
 
@@ -29,7 +29,7 @@ RSpec.describe Chagall::Cli do
       it 'passes the arguments correctly' do
         expect(Chagall::Compose::Main).to receive(:new).with('logs', 'app', '--tail', '100', '-f')
 
-        compose_subcommand.run('chagall', ['logs', 'app', '--tail', '100', '-f'])
+        compose_subcommand.run('chagall', [ 'logs', 'app', '--tail', '100', '-f' ])
       end
     end
 
@@ -55,10 +55,10 @@ RSpec.describe Chagall::Cli do
         allow(subcommand_instance).to receive(:collect_options_hash).and_return({ server: 'prod-server' })
         allow(subcommand_instance).to receive(:execute)
 
-        expect(cli).to receive(:parse).with(['--server', 'prod-server'])
-        expect(subcommand_instance).to receive(:execute).with('logs', ['app', '--tail', '100'])
+        expect(cli).to receive(:parse).with([ '--server', 'prod-server' ])
+        expect(subcommand_instance).to receive(:execute).with('logs', [ 'app', '--tail', '100' ])
 
-        compose_subcommand.run('chagall', ['--server', 'prod-server', 'logs', 'app', '--tail', '100'])
+        compose_subcommand.run('chagall', [ '--server', 'prod-server', 'logs', 'app', '--tail', '100' ])
       end
     end
 

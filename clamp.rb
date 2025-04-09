@@ -2,7 +2,7 @@ require 'clamp'
 
 class SpeakCommand < Clamp::Command
   option '--loud', :flag, 'say it loud'
-  option ['-n', '--iterations'], 'N', 'say it N times', default: 1 do |s|
+  option [ '-n', '--iterations' ], 'N', 'say it N times', default: 1 do |s|
     Integer(s)
   end
 

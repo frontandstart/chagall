@@ -2,8 +2,8 @@ PATH
   remote: .
   specs:
     chagall (0.0.1.beta)
+      clamp
       pry
-      thor (~> 1.3)
       zeitwerk (~> 2.5)
 
 GEM
@@ -29,6 +29,8 @@ GEM
     benchmark (0.4.0)
     bigdecimal (3.1.8)
     byebug (11.1.3)
+    clamp (1.3.2)
+    climate_control (1.2.0)
     coderay (1.1.3)
     concurrent-ruby (1.3.5)
     connection_pool (2.5.0)
@@ -122,7 +124,6 @@ GEM
     ruby-progressbar (1.13.0)
     securerandom (0.4.1)
     stringio (3.1.6)
-    thor (1.3.2)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
     unicode-display_width (3.1.4)
@@ -142,6 +143,8 @@ PLATFORMS
 DEPENDENCIES
   byebug
   chagall!
+  clamp
+  climate_control
   debug
   pry
   rake

@@ -13,7 +13,7 @@ describe Chagall::Compose::Main do
                                                                projects_folder: '~/projects'
                                                              })
     allow(settings_instance).to receive(:project_folder_path).and_return('~/projects/test-app')
-    allow(Chagall::Settings).to receive(:[]).with(:compose_files).and_return(['compose.yaml'])
+    allow(Chagall::Settings).to receive(:[]).with(:compose_files).and_return([ 'compose.yaml' ])
     allow(Chagall::SSH).to receive(:new).and_return(ssh_instance)
   end
 

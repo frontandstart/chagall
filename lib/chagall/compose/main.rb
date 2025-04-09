@@ -1,5 +1,5 @@
-require_relative '../settings'
-require_relative '../base'
+require_relative "../settings"
+require_relative "../base"
 
 module Chagall
   module Compose
@@ -10,10 +10,10 @@ module Chagall
       def initialize(command, args)
         super()
         @command = command
-        @arguments = args.join(' ') if args.is_a?(Array)
+        @arguments = args.join(" ") if args.is_a?(Array)
         @arguments ||= args.to_s
 
-        raise Chagall::Error, 'Command is required' if @command.nil? || @command.empty?
+        raise Chagall::Error, "Command is required" if @command.nil? || @command.empty?
 
         run_command
       end
@@ -30,7 +30,7 @@ module Chagall
 
       def build_docker_compose_command
         compose_files = Settings[:compose_files]
-        compose_cmd = ['docker compose']
+        compose_cmd = [ "docker compose" ]
 
         if compose_files && !compose_files.empty?
           compose_files.each do |file|
@@ -38,7 +38,7 @@ module Chagall
           end
         end
 
-        compose_cmd.join(' ')
+        compose_cmd.join(" ")
       end
     end
   end

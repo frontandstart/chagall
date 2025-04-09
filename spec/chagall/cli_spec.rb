@@ -9,7 +9,7 @@ RSpec.describe Chagall::Cli do
   let(:mock_option) do
     {
       key: :test_option,
-      flags: ['--test-option'],
+      flags: [ '--test-option' ],
       type: :string,
       description: 'Test option',
       environment_variable: 'TEST_OPTION'
@@ -22,7 +22,7 @@ RSpec.describe Chagall::Cli do
 
       # Verify the option is declared correctly
       expect_any_instance_of(Clamp::Command).to receive(:option).with(
-        ['--test-option'], :string, 'Test option',
+        [ '--test-option' ], :string, 'Test option',
         hash_including(environment_variable: 'TEST_OPTION')
       )
 
@@ -97,7 +97,7 @@ RSpec.describe Chagall::Cli do
       allow(cli_instance).to receive(:server).and_return('example.com')
       allow(cli_instance).to receive(:name).and_return('test_project')
       allow(cli_instance).to receive(:dry_run?).and_return(true)
-      allow(cli_instance).to receive(:compose_files).and_return(['docker-compose.yml', 'docker-compose.override.yml'])
+      allow(cli_instance).to receive(:compose_files).and_return([ 'docker-compose.yml', 'docker-compose.override.yml' ])
 
       options = cli_instance.send(:collect_options_hash)
 
@@ -105,7 +105,7 @@ RSpec.describe Chagall::Cli do
       expect(options[:server]).to eq('example.com')
       expect(options[:name]).to eq('test_project')
       expect(options[:dry_run]).to eq(true)
-      expect(options[:compose_files]).to eq(['docker-compose.yml', 'docker-compose.override.yml'])
+      expect(options[:compose_files]).to eq([ 'docker-compose.yml', 'docker-compose.override.yml' ])
     end
 
     it 'correctly maps option keys for compatibility' do
@@ -137,7 +137,7 @@ RSpec.describe Chagall::Cli do
 
       allow(compose_command).to receive(:command).and_return('logs')
       allow(compose_command).to receive(:service).and_return('app')
-      allow(compose_command).to receive(:args).and_return(['--tail', '100', '-f'])
+      allow(compose_command).to receive(:args).and_return([ '--tail', '100', '-f' ])
       allow(compose_command).to receive(:collect_options_hash).and_return({})
 
       expect(Chagall::Settings).to receive(:configure_with_hash).with(kind_of(Hash))

@@ -28,7 +28,7 @@ RSpec.describe Chagall::Settings do
       keep_releases_option = Chagall::Settings::OPTIONS.find { |o| o[:key] == :keep_releases }
 
       # Test compose_files proc (splits comma-separated string)
-      expect(compose_files_option[:proc].call('file1.yml,file2.yml')).to eq(['file1.yml', 'file2.yml'])
+      expect(compose_files_option[:proc].call('file1.yml,file2.yml')).to eq([ 'file1.yml', 'file2.yml' ])
 
       # Test keep_releases proc (converts to integer)
       expect(keep_releases_option[:proc].call('5')).to eq(5)
@@ -36,13 +36,13 @@ RSpec.describe Chagall::Settings do
   end
 
   describe '#configure_with_hash' do
-    let(:options) { { server: 'user@server', name: 'myproject', compose_files: ['compose.prod.yaml'] } }
+    let(:options) { { server: 'user@server', name: 'myproject', compose_files: [ 'compose.prod.yaml' ] } }
     subject(:settings) { Chagall::Settings.configure_with_hash(options) }
 
     it 'configures settings with hash options' do
       expect(settings.options[:server]).to eq('user@server')
       expect(settings.options[:name]).to eq('myproject')
-      expect(settings.options[:compose_files]).to eq(['compose.prod.yaml'])
+      expect(settings.options[:compose_files]).to eq([ 'compose.prod.yaml' ])
     end
 
     it 'loads defaults for missing options' do
@@ -72,7 +72,7 @@ RSpec.describe Chagall::Settings do
   end
 
   describe '#configure' do
-    let(:argv) { ['-s', 'user@server', '-n', 'myproject', '-c', 'compose.prod.yaml'] }
+    let(:argv) { [ '-s', 'user@server', '-n', 'myproject', '-c', 'compose.prod.yaml' ] }
     subject(:settings) { Chagall::Settings.configure(argv) }
 
     it 'loads defaults and config file' do
@@ -112,7 +112,7 @@ RSpec.describe Chagall::Settings do
       expect do
         Chagall::Settings.configure_with_hash({
                                                 server: 'user@server',
-                                                compose_files: ['nonexistent.yml']
+                                                compose_files: [ 'nonexistent.yml' ]
                                               })
       end.to raise_error(Chagall::SettingsError, /Missing compose file/)
     end
@@ -120,7 +120,7 @@ RSpec.describe Chagall::Settings do
 
   describe 'utility methods' do
     let(:options) do
-      { server: 'user@server', name: 'myproject', release: 'abc123', compose_files: ['compose.prod.yaml'] }
+      { server: 'user@server', name: 'myproject', release: 'abc123', compose_files: [ 'compose.prod.yaml' ] }
     end
     before { Chagall::Settings.configure_with_hash(options) }
 
@@ -134,18 +134,18 @@ RSpec.describe Chagall::Settings do
   end
 
   describe 'dot notation access' do
-    let(:options) { { server: 'user@server', name: 'myproject', compose_files: ['compose.prod.yaml'] } }
+    let(:options) { { server: 'user@server', name: 'myproject', compose_files: [ 'compose.prod.yaml' ] } }
     before { Chagall::Settings.configure_with_hash(options) }
 
     it 'allows access via hash notation' do
       expect(Chagall::Settings[:server]).to eq('user@server')
       expect(Chagall::Settings[:name]).to eq('myproject')
-      expect(Chagall::Settings[:compose_files]).to eq(['compose.prod.yaml'])
+      expect(Chagall::Settings[:compose_files]).to eq([ 'compose.prod.yaml' ])
     end
   end
 
   describe 'custom methods using dot notation' do
-    let(:argv) { ['-s', 'user@server', '-n', 'myproject', '-c', 'compose.prod.yaml'] }
+    let(:argv) { [ '-s', 'user@server', '-n', 'myproject', '-c', 'compose.prod.yaml' ] }
     before { Chagall::Settings.configure(argv) }
 
     it 'uses dot notation in image_tag method' do

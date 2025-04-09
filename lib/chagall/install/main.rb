@@ -1,16 +1,16 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require 'erb'
-require 'yaml'
-require 'fileutils'
-require 'optparse'
-require 'logger'
-require 'tmpdir'
-require 'securerandom'
-require 'net/http'
-require 'json'
-require 'uri'
+require "erb"
+require "yaml"
+require "fileutils"
+require "optparse"
+require "logger"
+require "tmpdir"
+require "securerandom"
+require "net/http"
+require "json"
+require "uri"
 
 # The Installer class is responsible for setting up the environment for a Ruby on Rails application.
 # It detects the required services and versions, generates necessary Docker and Compose files, and logs the process.
@@ -41,56 +41,56 @@ require 'uri'
 # - generate_compose: Generates the Docker Compose file from a template.
 # - generate_dockerfile: Generates the Dockerfile from a template.
 class Installer # rubocop:disable Metrics/ClassLength
-  TEMPLATES_DIR = File.expand_path('./templates', __dir__)
+  TEMPLATES_DIR = File.expand_path("./templates", __dir__)
   TEMP_DIR = File.join(Dir.tmpdir, "chagall-#{SecureRandom.hex(4)}").freeze
-  DEFAULT_RUBY_VERSION = '3.3.0'
-  DEFAULT_NODE_VERSION = '20.11.0'
+  DEFAULT_RUBY_VERSION = "3.3.0"
+  DEFAULT_NODE_VERSION = "20.11.0"
 
-  GITHUB_REPO = 'frontandstart/chagall'
+  GITHUB_REPO = "frontandstart/chagall"
   TEMPLATE_FILES = %w[template.compose.yaml
                       template.Dockerfile].freeze
 
   DEPENDENCIES = [
     {
       adapter: :postgresql,
-      gem_name: 'pg',
+      gem_name: "pg",
       service: :postgres,
-      image: 'postgres:16.4-bullseye',
-      docker_env: 'DATABASE_URL: postgres://postgres:postgres@postgres:5432'
+      image: "postgres:16.4-bullseye",
+      docker_env: "DATABASE_URL: postgres://postgres:postgres@postgres:5432"
     },
     {
       adapter: :mysql2,
-      gem_name: 'mysql2',
+      gem_name: "mysql2",
       service: :mariadb,
-      image: 'mariadb:8.0-bullseye',
-      docker_env: 'DATABASE_URL: mysql://mysql:mysql@mariadb:3306'
+      image: "mariadb:8.0-bullseye",
+      docker_env: "DATABASE_URL: mysql://mysql:mysql@mariadb:3306"
     },
     {
       adapter: :mongoid,
-      gem_name: 'mongoid',
+      gem_name: "mongoid",
       service: :mongodb,
-      image: 'mongo:8.0-noble',
-      docker_env: 'DATABASE_URL: mongodb://mongodb:27017'
+      image: "mongo:8.0-noble",
+      docker_env: "DATABASE_URL: mongodb://mongodb:27017"
     },
     {
-      gem_name: 'redis',
+      gem_name: "redis",
       service: :redis,
-      image: 'redis:7.4-bookworm',
-      docker_env: 'REDIS_URL: redis://redis:6379'
+      image: "redis:7.4-bookworm",
+      docker_env: "REDIS_URL: redis://redis:6379"
     },
     {
-      gem_name: 'sidekiq',
+      gem_name: "sidekiq",
       service: :sidekiq,
       image: -> { app_name }
     },
     {
-      gem_name: 'elasticsearch',
+      gem_name: "elasticsearch",
       service: :elasticsearch,
-      image: 'elasticsearch:8.15.3',
-      docker_env: 'ELASTICSEARCH_URL: elasticsearch://elasticsearch:9200'
+      image: "elasticsearch:8.15.3",
+      docker_env: "ELASTICSEARCH_URL: elasticsearch://elasticsearch:9200"
     },
     {
-      gem_name: 'solid_queue',
+      gem_name: "solid_queue",
       service: :solid_queue,
       image: -> { app_name }
     }
@@ -108,7 +108,7 @@ class Installer # rubocop:disable Metrics/ClassLength
                 :environments
 
   def initialize(options = {})
-    raise 'Gemfile not found' unless File.exist?('Gemfile')
+    raise "Gemfile not found" unless File.exist?("Gemfile")
 
     Chagall::Settings.configure(argv)
 
@@ -117,10 +117,10 @@ class Installer # rubocop:disable Metrics/ClassLength
     @logger = Logger.new($stdout)
     @logger.formatter = proc { |_, _, _, msg| "#{msg}\n" }
     @environments = {}
-    @gemfile = File.read('Gemfile')
-    @gemfile_lock = File.read('Gemfile.lock')
-    @database_adapters = YAML.load_file('config/database.yml')
-                             .map { |_, config| config['adapter'] }.uniq
+    @gemfile = File.read("Gemfile")
+    @gemfile_lock = File.read("Gemfile.lock")
+    @database_adapters = YAML.load_file("config/database.yml")
+                             .map { |_, config| config["adapter"] }.uniq
     @database_type = @database_adapters
   end
 
@@ -130,7 +130,7 @@ class Installer # rubocop:disable Metrics/ClassLength
     generate_environment_variables
     generate_compose_file
     generate_dockerfile
-    logger.info 'Installation completed successfully!'
+    logger.info "Installation completed successfully!"
   ensure
     cleanup_temp_directory
   end
@@ -192,10 +192,10 @@ class Installer # rubocop:disable Metrics/ClassLength
   end
 
   def download_template(filename, release_info)
-    asset = release_info['assets'].find { |a| a['name'] == filename }
+    asset = release_info["assets"].find { |a| a["name"] == filename }
     raise "Template file #{filename} not found in release" unless asset
 
-    download_url = asset['browser_download_url']
+    download_url = asset["browser_download_url"]
     target_path = File.join(TEMP_DIR, filename)
 
     uri = URI(download_url)
@@ -217,58 +217,58 @@ class Installer # rubocop:disable Metrics/ClassLength
 
   def generate_database_url(adapter)
     case adapter
-    when 'postgresql'
-      'postgres://postgres:postgres@postgres:5432/db'
-    when 'mysql2'
-      'mysql2://mysql:mysql@mysql:3306/db'
-    when 'sqlite3'
-      'sqlite3:///data/db.sqlite3'
-    when 'redis'
-      'redis://redis:5432/0'
+    when "postgresql"
+      "postgres://postgres:postgres@postgres:5432/db"
+    when "mysql2"
+      "mysql2://mysql:mysql@mysql:3306/db"
+    when "sqlite3"
+      "sqlite3:///data/db.sqlite3"
+    when "redis"
+      "redis://redis:5432/0"
     else
       raise "Unsupported adapter: #{adapter}"
     end
   end
 
   def generate_compose_file
-    backup_file('compose.yaml')
+    backup_file("compose.yaml")
 
-    template_path = File.join(TEMP_DIR, 'template.compose.yaml')
+    template_path = File.join(TEMP_DIR, "template.compose.yaml")
     raise "Compose template not found at #{template_path}" unless File.exist?(template_path)
 
     template = File.read(template_path)
     result = ERB.new(
       template,
-      trim_mode: '-',
+      trim_mode: "-",
       services: services,
       environments: environments
     ).result(binding)
 
-    File.write('compose.yaml', result)
-    logger.info 'Generated compose.yaml'
+    File.write("compose.yaml", result)
+    logger.info "Generated compose.yaml"
   end
 
   def generate_dockerfile
-    backup_file('Dockerfile')
+    backup_file("Dockerfile")
 
-    template_path = File.join(TEMP_DIR, 'template.Dockerfile')
+    template_path = File.join(TEMP_DIR, "template.Dockerfile")
     raise "Dockerfile template not found at #{template_path}" unless File.exist?(template_path)
 
     template = File.read(template_path)
-    result = ERB.new(template, trim_mode: '-').result(binding)
+    result = ERB.new(template, trim_mode: "-").result(binding)
 
-    File.write('Dockerfile', result)
-    logger.info 'Generated Dockerfile'
+    File.write("Dockerfile", result)
+    logger.info "Generated Dockerfile"
   end
 
   def detect_ruby_version
     from_gemfile = gemfile.match(/ruby ['"](.+?)['"]/)[1]
     return from_gemfile if from_gemfile
 
-    if File.exist?('.ruby-version')
-      File.read('.ruby-version').strip
-    elsif File.exist?('.tool-versions')
-      File.read('.tool-versions').match(/ruby (.+?)\n/)[1]
+    if File.exist?(".ruby-version")
+      File.read(".ruby-version").strip
+    elsif File.exist?(".tool-versions")
+      File.read(".tool-versions").match(/ruby (.+?)\n/)[1]
     else
       DEFAULT_RUBY_VERSION
     end
@@ -279,22 +279,22 @@ class Installer # rubocop:disable Metrics/ClassLength
   end
 
   def node_version_from_package_json
-    return unless File.exist?('package.json')
+    return unless File.exist?("package.json")
 
     begin
-      JSON.parse(File.read('package.json')).dig('engines', 'node')&.delete('^')
+      JSON.parse(File.read("package.json")).dig("engines", "node")&.delete("^")
     rescue JSON::ParserError
       nil
     end
   end
 
   def node_version_from_file
-    if File.exist?('.node-version')
-      File.read('.node-version').strip
-    elsif File.exist?('.tool-versions')
-      File.read('.tool-versions').match(/node (.+?)\n/)[1]
-    elsif File.exist?('.nvmrc')
-      File.read('.nvmrc').strip
+    if File.exist?(".node-version")
+      File.read(".node-version").strip
+    elsif File.exist?(".tool-versions")
+      File.read(".tool-versions").match(/node (.+?)\n/)[1]
+    elsif File.exist?(".nvmrc")
+      File.read(".nvmrc").strip
     end
   end
 
@@ -306,13 +306,13 @@ end
 if __FILE__ == $PROGRAM_NAME
   options = {}
   OptionParser.new do |opts|
-    opts.banner = 'Usage: install.rb [options]'
+    opts.banner = "Usage: install.rb [options]"
 
-    opts.on('-n', '--non-interactive', 'Run in non-interactive mode') do
+    opts.on("-n", "--non-interactive", "Run in non-interactive mode") do
       options[:non_interactive] = true
     end
 
-    opts.on('-a', '--app-name NAME', 'Set application name') do |name|
+    opts.on("-a", "--app-name NAME", "Set application name") do |name|
       options[:app_name] = name
     end
   end.parse!

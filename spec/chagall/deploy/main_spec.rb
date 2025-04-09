@@ -5,7 +5,7 @@ require 'spec_helper'
 require 'stringio'
 
 RSpec.describe Chagall::Deploy::Main do
-  let(:dummy_argv) { ['--dry-run', '--server', 'localhost', '-', ''] }
+  let(:dummy_argv) { [ '--dry-run', '--server', 'localhost', '-', '' ] }
   subject { described_class.new(dummy_argv) }
   let(:main_instance) { subject }
   let(:tag) { SecureRandom.hex(4) }

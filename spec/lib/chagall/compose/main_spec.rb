@@ -15,7 +15,7 @@ RSpec.describe Chagall::Compose::Main do
     allow(ssh).to receive(:execute)
   end
 
-  let(:compose_files) { ['compose.yaml', 'compose.prod.yaml'] }
+  let(:compose_files) { [ 'compose.yaml', 'compose.prod.yaml' ] }
 
   describe '#initialize' do
     context 'when command is missing' do

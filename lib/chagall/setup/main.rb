@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'yaml'
-require 'io/console'
+require "yaml"
+require "io/console"
 
 module Chagall
   module Setup
@@ -20,18 +20,18 @@ module Chagall
         create_project_folder unless project_folder_exists?
         create_env_files
 
-        logger.info 'Docker environment setup complete'
+        logger.info "Docker environment setup complete"
       end
 
       private
 
       def create_env_files
-        logger.debug 'Create env files described at services...'
+        logger.debug "Create env files described at services..."
 
         Settings[:compose_files].each do |file|
           yaml = YAML.load_file(file, aliases: true)
-          yaml['services'].each do |service|
-            service[1]['env_file']&.each do |env_file|
+          yaml["services"].each do |service|
+            service[1]["env_file"]&.each do |env_file|
               ssh.execute("touch #{env_file}", directory: Settings.instance.project_folder_path)
             end
           end
@@ -40,27 +40,27 @@ module Chagall
 
       def unable_to_access_docker_deamon?
         return true
-        docker_result = ssh.command('docker ps')
+        docker_result = ssh.command("docker ps")
         docker_output = `#{docker_result} 2>&1`.strip
         logger.debug "Docker output: #{docker_output}"
-        docker_output.downcase.include?('permission denied') ||
-          docker_output.downcase.include?('connect: permission denied')
+        docker_output.downcase.include?("permission denied") ||
+          docker_output.downcase.include?("connect: permission denied")
       end
 
       def setup_non_root_docker_deamon_access
-        logger.info 'Add user to docker group...'
+        logger.info "Add user to docker group..."
 
-        username = `#{ssh.command('whoami')} 2>&1`.strip
-        return true if username == 'root'
+        username = `#{ssh.command("whoami")} 2>&1`.strip
+        return true if username == "root"
 
-        groups = `#{ssh.command('groups')} 2>&1`.strip
-        return if groups.include?('docker')
+        groups = `#{ssh.command("groups")} 2>&1`.strip
+        return if groups.include?("docker")
 
         logger.debug "Adding #{username} user to docker group"
         ssh.execute("sudo usermod -aG docker #{username}", tty: true)
         ssh.execute("groups #{username} | grep -q docker")
 
-        logger.debug 'Successfully added user to docker group'
+        logger.debug "Successfully added user to docker group"
         true
       rescue StandardError => e
         logger.error "Error setting up Docker daemon access: #{e.message}"
@@ -69,18 +69,18 @@ module Chagall
       end
 
       def docker_installed?
-        logger.debug 'Checking Docker installation...'
+        logger.debug "Checking Docker installation..."
 
-        docker_output = `#{ssh.command('docker --version')} 2>&1`.strip
+        docker_output = `#{ssh.command("docker --version")} 2>&1`.strip
         logger.debug "Docker version output: '#{docker_output}'"
 
-        compose_output = `#{ssh.command('docker compose version')} 2>&1`.strip
+        compose_output = `#{ssh.command("docker compose version")} 2>&1`.strip
         logger.debug "Docker Compose output: '#{compose_output}'"
 
-        return true if docker_output.include?('Docker version') &&
-                       compose_output.include?('Docker Compose version')
+        return true if docker_output.include?("Docker version") &&
+                       compose_output.include?("Docker Compose version")
 
-        logger.warn 'Docker check failed:'
+        logger.warn "Docker check failed:"
         logger.warn "Docker output: #{docker_output}"
         logger.warn "Docker Compose output: #{compose_output}"
         false
@@ -103,11 +103,11 @@ module Chagall
       end
 
       def install_docker
-        logger.debug 'Installing Docker...'
+        logger.debug "Installing Docker..."
 
         command = '(curl -fsSL https://get.docker.com || wget -O - https://get.docker.com || echo "exit 1") | sh'
         # Clear any existing sudo session
-        ssh.execute('sudo -k')
+        ssh.execute("sudo -k")
 
         logger.debug "Executing: #{command}"
         result = ssh.execute(command, tty: true)

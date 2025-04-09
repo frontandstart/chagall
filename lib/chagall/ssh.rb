@@ -1,10 +1,10 @@
 
-require 'English'
+require "English"
 module Chagall
   class SSH
     attr_reader :server, :ssh_args
 
-    DEFAULT_SSH_ARGS = '-o StrictHostKeyChecking=no -o ServerAliveInterval=60'.freeze
+    DEFAULT_SSH_ARGS = "-o StrictHostKeyChecking=no -o ServerAliveInterval=60".freeze
 
     def initialize(server: Settings.instance.options[:server], ssh_args: DEFAULT_SSH_ARGS)
       @server = server
@@ -25,16 +25,16 @@ module Chagall
     private
 
     def build_command(command, directory, tty)
-      ssh_cmd = ['ssh']
-      ssh_cmd << '-t' if tty
+      ssh_cmd = [ "ssh" ]
+      ssh_cmd << "-t" if tty
       ssh_cmd << ssh_args
       ssh_cmd << server
 
       cmd = if directory
               "cd #{directory} && #{command}"
-            else
+      else
               command
-            end
+      end
 
       "#{ssh_cmd.join(' ')} '#{cmd}'"
     end
@@ -42,13 +42,13 @@ module Chagall
     def logger
       @logger ||= Logger.new($stdout).tap do |l|
         l.formatter = proc do |severity, _, _, msg|
-          if severity == 'DEBUG'
+          if severity == "DEBUG"
             "[#{severity}] #{msg}\n"
           else
             "#{msg}\n"
           end
         end
-        l.level = ENV.fetch('LOG_LEVEL') { 'debug' }.downcase == 'debug' ? Logger::DEBUG : Logger::INFO
+        l.level = ENV.fetch("LOG_LEVEL") { "debug" }.downcase == "debug" ? Logger::DEBUG : Logger::INFO
       end
     end
   end

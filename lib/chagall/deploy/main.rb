@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative '../settings'
-require_relative '../ssh'
-require 'digest'
-require 'benchmark'
-require 'yaml'
+require_relative "../settings"
+require_relative "../ssh"
+require "digest"
+require "benchmark"
+require "yaml"
 
 module Chagall
   module Deploy
@@ -18,12 +18,12 @@ module Chagall
         setup_signal_handlers
         Time.now
 
-        t('Checking uncommitted changes') { check_uncommit_changes } unless Settings[:skip_uncommit]
-        t('Check image or build') { check_image_or_build }
-        t('tag as production') { tag_as_production }
-        t('update compose files') { update_compose_files }
-        t('deploy compose files') { deploy_compose_files }
-        t('rotate release') { rotate_releases }
+        t("Checking uncommitted changes") { check_uncommit_changes } unless Settings[:skip_uncommit]
+        t("Check image or build") { check_image_or_build }
+        t("tag as production") { tag_as_production }
+        t("update compose files") { update_compose_files }
+        t("deploy compose files") { deploy_compose_files }
+        t("rotate release") { rotate_releases }
 
         print_total_time
       rescue Interrupt
@@ -32,7 +32,7 @@ module Chagall
         cleanup_and_exit
       rescue StandardError => e
         logger.error "Deployment failed: #{e.message}"
-        logger.debug e.backtrace.join("\n") if ENV['DEBUG']
+        logger.debug e.backtrace.join("\n") if ENV["DEBUG"]
         print_total_time
         exit 1
       end
@@ -45,21 +45,21 @@ module Chagall
           return
         end
 
-        t('Building image') { build }
-        t('Rotating cache') { rotate_cache }
-        t('Verifying image') { verify_image }
+        t("Building image") { build }
+        t("Rotating cache") { rotate_cache }
+        t("Verifying image") { verify_image }
       end
 
       def setup_signal_handlers
         # Handle CTRL+C (SIGINT)
-        Signal.trap('INT') do
+        Signal.trap("INT") do
           @interrupted = true
           puts "\nReceived interrupt signal. Cleaning up..."
           cleanup_and_exit
         end
 
         # Handle SIGTERM
-        Signal.trap('TERM') do
+        Signal.trap("TERM") do
           @interrupted = true
           puts "\nReceived termination signal. Cleaning up..."
           cleanup_and_exit
@@ -67,7 +67,7 @@ module Chagall
       end
 
       def cleanup_and_exit
-        puts 'Cleaning up...'
+        puts "Cleaning up..."
         # Add any cleanup tasks here
         exit 1
       end
@@ -75,7 +75,7 @@ module Chagall
       def check_interrupted
         return unless @interrupted
 
-        puts 'Operation interrupted by user'
+        puts "Operation interrupted by user"
         cleanup_and_exit
       end
 
@@ -103,7 +103,7 @@ module Chagall
 
       def check_uncommit_changes
         status = `git status --porcelain`.strip
-        raise 'Uncommitted changes found. Commit first' unless status.empty?
+        raise "Uncommitted changes found. Commit first" unless status.empty?
       end
 
       def setup_server
@@ -121,7 +121,7 @@ module Chagall
       end
 
       def verify_image(check_only: false)
-        logger.debug 'Verifying image on server...'
+        logger.debug "Verifying image on server..."
 
         check_cmd = "docker images --filter=reference=#{Settings.instance.image_tag} --format '{{.ID}}' | grep ."
 
@@ -140,7 +140,7 @@ module Chagall
       end
 
       def verify_compose_files
-        puts 'Verifying compose files on server...'
+        puts "Verifying compose files on server..."
 
         Settings[:compose_files].all? do |file|
           remote_file = "#{Settings[:projects_folder]}/#{File.basename(file)}"
@@ -156,7 +156,7 @@ module Chagall
         logger.debug "Tagging Docker #{Settings.instance.image_tag} image as production..."
 
         command = "docker tag #{Settings.instance.image_tag} #{Settings[:name]}:production"
-        ssh.execute(command) or raise 'Failed to tag Docker image'
+        ssh.execute(command) or raise "Failed to tag Docker image"
       end
 
       def build_cmd
@@ -170,9 +170,9 @@ module Chagall
         ]
 
         if Settings[:remote]
-          args.push('--load')
+          args.push("--load")
         else
-          args.push('--output type=docker,dest=-')
+          args.push("--output type=docker,dest=-")
         end
 
         args.push(Settings[:docker_context])
@@ -189,7 +189,7 @@ module Chagall
       end
 
       def update_compose_files
-        logger.debug 'Updating compose configuration files on remote server...'
+        logger.debug "Updating compose configuration files on remote server..."
 
         Settings[:compose_files].each do |file|
           remote_destination = "#{Settings.instance.project_folder_path}/#{File.basename(file)}"
@@ -198,17 +198,17 @@ module Chagall
       end
 
       def deploy_compose_files
-        logger.debug 'Updating compose services...'
-        deploy_command = ['docker compose']
+        logger.debug "Updating compose services..."
+        deploy_command = [ "docker compose" ]
 
         # Use the remote file paths for docker compose command
         Settings[:compose_files].each do |file|
           deploy_command << "-f #{File.basename(file)}"
         end
-        deploy_command << 'up -d'
+        deploy_command << "up -d"
 
-        ssh.execute(deploy_command.join(' '),
-                    directory: Settings.instance.project_folder_path) or raise 'Failed to update compose services'
+        ssh.execute(deploy_command.join(" "),
+                    directory: Settings.instance.project_folder_path) or raise "Failed to update compose services"
       end
 
       def copy_file(local_file, remote_destination)
@@ -219,7 +219,7 @@ module Chagall
       end
 
       def rotate_releases
-        logger.debug 'Rotating releases...'
+        logger.debug "Rotating releases..."
         release_folder = "#{Settings.instance.project_folder_path}/releases"
         release_file = "#{release_folder}/#{Settings[:release]}"
 
