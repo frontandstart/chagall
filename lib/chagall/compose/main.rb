@@ -7,7 +7,7 @@ module Chagall
 
       def initialize(command, *args)
         @command = command
-        @service = args.first if args.first && !args.first.start_with?('-')
+        @service = args.first if args.first && !args.first.start_with?("-")
         @args = @service ? args[1..-1] : args
 
         raise Chagall::Error, "Command is required" if @command.nil? || @command.empty?
@@ -20,7 +20,7 @@ module Chagall
       def run_command
         cmd = build_command
         logger.debug "Executing: #{cmd}"
-        
+
         result = ssh.execute(cmd, tty: true)
         raise Chagall::Error, "Command failed: #{cmd}" unless result
       end
@@ -49,4 +49,4 @@ module Chagall
       end
     end
   end
-end 
+end

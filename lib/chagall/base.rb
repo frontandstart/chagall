@@ -9,9 +9,9 @@ module Chagall
       "info" => Logger::INFO,
       "debug" => Logger::DEBUG,
       "warn" => Logger::WARN,
-      "error" => Logger::ERROR,
+      "error" => Logger::ERROR
     }
- 
+
     def logger
       @logger ||= Logger.new($stdout).tap do |l|
         l.formatter = proc do |severity, _, _, msg|

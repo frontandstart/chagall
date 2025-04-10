@@ -7,7 +7,6 @@ require "yaml"
 
 module Chagall
   class Deploy < Base
-
     attr_reader :total_time
 
     def execute
@@ -253,6 +252,6 @@ module Chagall
 
     def ssh
       @ssh ||= SSH.new
-    end  
+    end
   end
 end

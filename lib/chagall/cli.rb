@@ -10,13 +10,12 @@ Clamp.allow_options_after_parameters = true
 
 module Chagall
   class Cli < Clamp::Command
-
     def run(arguments)
       parse(arguments)
       Chagall::Settings.configure(collect_options_hash)
       execute
     end
- 
+
     def self.options_from_config_file
       @options_from_config_file ||= begin
         config_path = File.join(Dir.pwd, "chagall.yml") || File.join(Dir.pwd, "chagall.yaml")
