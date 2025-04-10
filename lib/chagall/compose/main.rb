@@ -1,32 +1,39 @@
-require_relative "../settings"
 require_relative "../base"
 
 module Chagall
   module Compose
-    # Build and execute command usign docker compose on server
     class Main < Base
-      attr_reader :command, :arguments
+      attr_reader :command, :service, :args
 
-      def initialize(command, args)
-        super()
+      def initialize(command, *args)
         @command = command
-        @arguments = args.join(" ") if args.is_a?(Array)
-        @arguments ||= args.to_s
+        @service = args.first if args.first && !args.first.start_with?('-')
+        @args = @service ? args[1..-1] : args
 
         raise Chagall::Error, "Command is required" if @command.nil? || @command.empty?
 
         run_command
       end
 
-      def run_command
-        cmd = "cd #{Settings.instance.project_folder_path} && #{build_docker_compose_command} #{@command}"
-        cmd << " #{arguments}" unless arguments.empty?
+      private
 
+      def run_command
+        cmd = build_command
         logger.debug "Executing: #{cmd}"
-        ssh.execute(cmd, tty: true)
+        
+        result = ssh.execute(cmd, tty: true)
+        raise Chagall::Error, "Command failed: #{cmd}" unless result
       end
 
-      private
+      def build_command
+        cmd = [ "cd #{Settings.instance.project_folder_path}" ]
+        cmd << build_docker_compose_command
+        cmd << @command
+        cmd << @service if @service
+        cmd << @args.join(" ") if @args && @args.any?
+
+        cmd.join(" && ")
+      end
 
       def build_docker_compose_command
         compose_files = Settings[:compose_files]
@@ -42,4 +49,4 @@ module Chagall
       end
     end
   end
-end
+end 
