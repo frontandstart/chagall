@@ -5,15 +5,6 @@ module Chagall
   class Compose < Base
     attr_reader :command, :arguments
 
-    # def initialize(command, args)
-    #   @command = command
-    #   @arguments = args.join(" ") if args.is_a?(Array)
-    #   @arguments ||= args.to_s
-
-    #   raise Chagall::Error, "Command is required" if @command.nil? || @command.empty?
-
-    #   run_command
-    # end
 
     # Override parse method to handle all arguments after the subcommand
     def parse(arguments)
@@ -39,7 +30,7 @@ module Chagall
 
     def execute
       cmd = "cd #{Settings.instance.project_folder_path} && #{build_docker_compose_command} #{@command}"
-      cmd << " #{arguments}" unless arguments.empty?
+      cmd << " #{@raw_args.join(" ")}" unless @raw_args.empty?
 
       logger.debug "Executing: #{cmd}"
       ssh.execute(cmd, tty: true)
