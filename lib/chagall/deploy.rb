@@ -13,14 +13,15 @@ module Chagall
       @interrupted = false
       @total_time = 0.0
       setup_signal_handlers
-      Time.now
+
+      # binding.irb
 
       t("Checking uncommitted changes") { check_uncommit_changes } unless Settings[:skip_uncommit]
       t("Check image or build") { check_image_or_build }
-      t("tag as production") { tag_as_production }
-      t("update compose files") { update_compose_files }
-      t("deploy compose files") { deploy_compose_files }
-      t("rotate release") { rotate_releases }
+      t("Tag as production") { tag_as_production }
+      t("Update compose files") { update_compose_files }
+      t("Deploy compose files") { deploy_compose_files }
+      t("Rotate release") { rotate_releases }
 
       print_total_time
     rescue Interrupt
@@ -78,8 +79,17 @@ module Chagall
 
     private
 
+    def format_time(seconds)
+      minutes, secs = seconds.abs.divmod(60)
+      hours, mins = minutes.divmod(60)
+      [[hours, 'h'], [mins, 'm'], [secs.round(2), 's']]
+        .reject { |n, _| n.zero? && !(_=='s') }
+        .map { |n, u| "#{n}#{u}" }
+        .join(' ')
+    end
+
     def print_total_time
-      logger.info "Total execution time: #{format('%.2f', @total_time)}s"
+      logger.info "Total execution time: #{format_time(@total_time)}"
     end
 
     def t(title)
@@ -194,7 +204,6 @@ module Chagall
       logger.debug "Updating compose services..."
       deploy_command = [ "docker compose" ]
 
-      # Use the remote file paths for docker compose command
       Settings[:compose_files].each do |file|
         deploy_command << "-f #{File.basename(file)}"
       end
@@ -216,10 +225,8 @@ module Chagall
       release_folder = "#{Settings.instance.project_folder_path}/releases"
       release_file = "#{release_folder}/#{Settings[:release]}"
 
-      # Create releases directory if it doesn't exist
       ssh.execute("mkdir -p #{release_folder}")
 
-      # Save current release
       ssh.execute("touch #{release_file}")
 
       # Get list of releases sorted by modification time (newest first)
@@ -248,10 +255,6 @@ module Chagall
       raise "Command failed with exit code #{$CHILD_STATUS.exitstatus}: #{args.join(' ')}" unless result
 
       result
-    end
-
-    def ssh
-      @ssh ||= SSH.new
     end
   end
 end

@@ -6,7 +6,7 @@ module Chagall
 
     DEFAULT_SSH_ARGS = "-o StrictHostKeyChecking=no -o ServerAliveInterval=60".freeze
 
-    def initialize(server: Settings.instance.options[:server], ssh_args: DEFAULT_SSH_ARGS, logger: Logger.new($stdout))
+    def initialize(server: Settings.instance.options[:server], ssh_args: DEFAULT_SSH_ARGS, logger:)
       @server = server
       @ssh_args = ssh_args
       @logger = logger
@@ -14,7 +14,7 @@ module Chagall
 
     def execute(command, directory: nil, tty: false)
       cmd = build_command(command, directory, tty)
-      logger.debug "SSH: #{cmd}"
+      logger.debug "SSH: #{cmd}" if logger.debug?
       system(cmd)
       $CHILD_STATUS.success?
     end

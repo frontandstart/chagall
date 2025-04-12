@@ -34,7 +34,6 @@ module Chagall
     end
 
     def unable_to_access_docker_deamon?
-      return true
       docker_result = ssh.command("docker ps")
       docker_output = `#{docker_result} 2>&1`.strip
       logger.debug "Docker output: #{docker_output}"
@@ -72,8 +71,11 @@ module Chagall
       compose_output = `#{ssh.command("docker compose version")} 2>&1`.strip
       logger.debug "Docker Compose output: '#{compose_output}'"
 
-      return true if docker_output.include?("Docker version") &&
-                      compose_output.include?("Docker Compose version")
+      if docker_output.downcase.include?("docker version") &&
+                      compose_output.downcase.include?("docker compose version")
+        logger.info "Docker and Docker Compose installed"
+        return true
+      end
 
       logger.warn "Docker check failed:"
       logger.warn "Docker output: #{docker_output}"

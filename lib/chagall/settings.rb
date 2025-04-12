@@ -13,12 +13,12 @@ module Chagall
 
     OPTIONS = [
       {
-        key: :debug,
-        flags: [ "--debug" ],
-        description: "Debug mode with pry attaching",
-        type: :boolean,
-        default: false,
-        environment_variable: "CHAGALL_DEBUG"
+        key: :log_level,
+        flags: [ "--log-level" ],
+        description: "Log level",
+        type: :string,
+        default: "info",
+        environment_variable: "CHAGALL_LOG_LEVEL"
       },
       {
         key: :skip_uncommit,
@@ -199,23 +199,6 @@ module Chagall
       return unless @missing_options.any? || @missing_compose_files.any?
 
       raise Chagall::SettingsError, error_message_string unless @options[:dry_run]
-    end
-
-    def options_from_config_file
-      @options_from_config_file ||= begin
-        config_path = File.join(Dir.pwd, "chagall.yml") || File.join(Dir.pwd, "chagall.yaml")
-        return {} unless File.exist?(config_path)
-
-        config = YAML.load_file(config_path)
-        config.transform_keys(&:to_sym)
-      rescue StandardError => e
-        puts "Warning: Error loading chagall.yml: #{e.message}"
-        {}
-      end
-    end
-
-    def true?(value)
-      value.to_s.strip.downcase == "true"
     end
 
     def image_tag

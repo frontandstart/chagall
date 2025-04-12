@@ -1,5 +1,6 @@
 require "logger"
 require_relative "ssh"
+require_relative "settings"
 
 module Chagall
   class Base < Clamp::Command
@@ -14,6 +15,7 @@ module Chagall
 
     def logger
       @logger ||= Logger.new($stdout).tap do |l|
+        l.level = LOG_LEVELS[Chagall::Settings[:log_level]]
         l.formatter = proc do |severity, _, _, msg|
           if severity == "DEBUG"
             "[#{severity}] #{msg}\n"
@@ -21,8 +23,6 @@ module Chagall
             "#{msg}\n"
           end
         end
-
-        l.level = LOG_LEVELS[ENV.fetch("LOG_LEVEL", "info")]
       end
     end
 
