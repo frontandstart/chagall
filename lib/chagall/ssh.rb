@@ -1,7 +1,7 @@
 require "English"
 
 module Chagall
-  class SSH
+  class Ssh
     attr_reader :server, :ssh_args, :logger
 
     DEFAULT_SSH_ARGS = "-o StrictHostKeyChecking=no -o ServerAliveInterval=60".freeze

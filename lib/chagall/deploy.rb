@@ -82,10 +82,10 @@ module Chagall
     def format_time(seconds)
       minutes, secs = seconds.abs.divmod(60)
       hours, mins = minutes.divmod(60)
-      [[hours, 'h'], [mins, 'm'], [secs.round(2), 's']]
-        .reject { |n, _| n.zero? && !(_=='s') }
+      [ [ hours, "h" ], [ mins, "m" ], [ secs.round(2), "s" ] ]
+        .reject { |n, _| n.zero? && !(_=="s") }
         .map { |n, u| "#{n}#{u}" }
-        .join(' ')
+        .join(" ")
     end
 
     def print_total_time
@@ -181,9 +181,9 @@ module Chagall
       args.push(Settings[:docker_context])
 
       args = args.map { |arg| "    #{arg}" }
-                  .join(" \\\n")
+                 .join(" \\\n")
 
-      cmd =  "docker build \\\n#{args}"
+      cmd =  "docker buildx build \\\n#{args}"
       if Settings[:remote]
         ssh.command(cmd)
       else

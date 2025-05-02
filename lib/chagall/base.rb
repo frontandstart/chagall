@@ -27,7 +27,7 @@ module Chagall
     end
 
     def ssh
-      @ssh ||= SSH.new(logger: logger)
+      @ssh ||= Chagall::Ssh.new(logger: logger)
     end
   end
 end

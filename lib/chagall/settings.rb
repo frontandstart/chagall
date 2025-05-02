@@ -9,7 +9,6 @@ module Chagall
 
     attr_accessor :options, :missing_options, :missing_compose_files
     CHAGALL_PROJECTS_FOLDER = "~/projects"
-    TMP_CACHE_FOLDER = "tmp"
 
     OPTIONS = [
       {
@@ -105,7 +104,7 @@ module Chagall
       {
         key: :cache_from,
         type: :string,
-        default: "#{TMP_CACHE_FOLDER}/.buildx-cache",
+        default: "tmp/.buildx-cache",
         flags: [ "--cache-from" ],
         environment_variable: "CHAGALL_CACHE_FROM",
         description: "Cache from"
@@ -113,7 +112,7 @@ module Chagall
       {
         key: :cache_to,
         type: :string,
-        default: "#{TMP_CACHE_FOLDER}/.buildx-cache-new",
+        default: "tmp/.buildx-cache-new",
         flags: [ "--cache-to" ],
         environment_variable: "CHAGALL_CACHE_TO",
         description: "Cache to"
